@@ -145,7 +145,8 @@ ESTILO = f"""
 .topo {{ display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap;
         border-bottom:3px solid var(--texto); padding-bottom:16px; }}
 .marca .pref {{ display:block; font-weight:500; font-size:.78rem; letter-spacing:.16em; color:var(--mudo); text-transform:uppercase; }}
-.marca .titulo {{ font-weight:900; font-size:3.6rem; line-height:.85; letter-spacing:-.04em; text-transform:uppercase; }}
+.marca .titulo {{ font-weight:900; font-size:3.6rem; line-height:1; letter-spacing:-.01em; text-transform:uppercase;
+                  margin-top:6px; }}
 .marca .titulo span {{ color:var(--real); }}
 .resumo {{ display:flex; gap:34px; flex-wrap:wrap; }}
 .resumo-nota {{ font-size:.72rem; letter-spacing:.1em; color:var(--mudo); text-transform:uppercase; margin-top:8px; }}
