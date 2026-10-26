@@ -1,0 +1,10 @@
+requests>=2.32
+PyYAML>=6.0
+python-dotenv>=1.0
+pandas>=2.2
+holidays>=0.60
+python-dateutil>=2.9
+tzdata>=2024.1
+streamlit>=1.40
+pydeck>=0.9
+pytest>=8.0

@@ -1,0 +1,35 @@
+# Identidade visual — Manual de Marca Prefeitura Rio 2025
+# Tipografia: Cera Pro (Black em títulos, Medium em subtítulos, Regular em textos).
+# A Cera Pro é licenciada: coloque os arquivos em dashboard/static/fonts/ (veja o LEIAME lá).
+# Enquanto eles não existirem, o navegador usa a Outfit (Google Fonts), de desenho semelhante.
+# Tema escuro sobre o azul institucional: o painel é feito para a tela da sala de operação.
+
+[server]
+enableStaticServing = true
+
+[client]
+toolbarMode = "minimal"
+
+[theme]
+base = "dark"
+primaryColor = "#42b9eb"
+backgroundColor = "#0c2340"
+secondaryBackgroundColor = "#13335a"
+textColor = "#eceded"
+font = "Cera Pro, Outfit:https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&display=swap"
+headingFont = "Cera Pro, Outfit"
+
+[[theme.fontFaces]]
+family = "Cera Pro"
+url = "app/static/fonts/CeraPro-Regular.woff2"
+weight = "400"
+
+[[theme.fontFaces]]
+family = "Cera Pro"
+url = "app/static/fonts/CeraPro-Medium.woff2"
+weight = "500"
+
+[[theme.fontFaces]]
+family = "Cera Pro"
+url = "app/static/fonts/CeraPro-Black.woff2"
+weight = "900"

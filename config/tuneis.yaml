@@ -1,0 +1,236 @@
+# Configuração do monitoramento de túneis — COR Rio
+#
+# Fonte: feed de trânsito do Waze for Cities (alertas + congestionamentos). O tempo de
+# travessia de cada sentido é estimado como:
+#     tempo de fluxo livre (comprimento_m / velocidade_max_kmh)
+#   + soma dos atrasos ("delay") dos congestionamentos no túnel e na fila de acesso
+# Um congestionamento conta para o túnel quando a via (street) ou o fim do trecho (endNode)
+# casa com `waze_rua` (regex), está a até 3 km do túnel e vai no mesmo sentido da rota.
+# Para conferir os nomes usados pelo Waze: python -m tuneis waze-rotas
+#
+# `coords` (lat, lon) definem o sentido e o desenho no mapa: a 1ª rota percorre os pontos
+# na ordem; `invertido: true` percorre ao contrário.
+# Se o feed for do tipo Traffic View (rotas), use `waze_route_id` / `waze_nome` por rota.
+# `pico_sim` (manha | tarde | ambos | nenhum) só é usado pelo simulador.
+
+coleta:
+  intervalo_s: 120          # o feed do Waze atualiza a cada ~1-2 min
+  dado_ausente_min: 10      # sem leitura nova há mais que isso -> "SEM DADOS"
+  db: data/tuneis.db
+  pasta_feeds: data/feeds   # JSON bruto de cada leitura (compactado), uma subpasta por feed e por dia
+  dias_feeds: 7             # apaga o que for mais antigo que isso (~180 MB/dia com o feed dos túneis)
+
+# Feed Traffic View (rotas): rotas cujo `name` casa com `filtro_nome` entram sozinhas no
+# monitoramento, sem precisar estar na lista `tuneis` abaixo. Nome no padrão
+# "Rota: <túnel> - Sentido <destino>": os sentidos do mesmo túnel viram um só trecho no painel.
+feed_rotas:
+  # Só os túneis em si: "Rota: Túnel X" ou "Rota: Túnel X - Sentido Y". Ficam de fora os corredores
+  # que citam um túnel, como "Rota: Túnel Santa Bárbara (Laranjeiras - S. Centro) - ... - Via Pres Vargas".
+  # Mais a Ponte Rio-Niterói ("BR-101 N/S Ponte Rio-Niterói - <destino>", feed de WAZE_TVT_FEED_URL_EXTRA).
+  filtro_nome: '^Rota:\s*T[uú]nel\b(?!.*\()(?!.*\s-\s+Via\b)|Ponte Rio-Niter[oó]i'
+  velocidade_livre_kmh: 60     # o feed não traz o fluxo livre: extensão / esta velocidade
+  incluir_tuneis_yaml: false   # true = monitora também a lista `tuneis` (feed de trânsito)
+
+# Parâmetros de detecção (globais; podem ser sobrescritos por túnel ou por rota)
+deteccao:
+  janela_baseline_semanas: 8   # histórico usado para a referência
+  min_amostras: 20             # mínimo de amostras no slot para usar o histórico próprio
+  razao_atencao: 1.4           # tempo >= 1,4x a referência ...
+  z_atencao: 3.0               # ... E >= 3 desvios robustos acima
+  razao_critico: 2.0
+  z_critico: 4.0
+  leituras_para_abrir: 2       # leituras anômalas consecutivas para abrir alerta (~4 min)
+  leituras_para_fechar: 3      # leituras normais consecutivas para encerrar (~6 min)
+  piso_dispersao_frac: 0.10    # dispersão mínima = 10% da referência ...
+  piso_dispersao_s: 10         # ... e nunca menos que 10 s
+  min_dias: 3                  # dias distintos de histórico no slot para usá-lo como referência
+  alertar_sem_historico: false # sem histórico (calibrando), só alerta interdição
+
+tuneis:
+  - id: reboucas
+    nome: Túnel Rebouças
+    waze_rua: 'T[uú]nel (Ant[oô]nio |Andr[eé] )?Rebou[cç]as'  # no Waze: "Túnel André Rebouças"
+    comprimento_m: 2800
+    velocidade_max_kmh: 80
+    coords: [[-22.9268, -43.2047], [-22.9405, -43.1996], [-22.9575, -43.2047]]
+    rotas:
+      - id: reboucas_lagoa
+        sentido: Rio Comprido → Lagoa
+        pico_sim: tarde
+        waze_route_id: null
+      - id: reboucas_rio_comprido
+        sentido: Lagoa → Rio Comprido
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: santa_barbara
+    nome: Túnel Santa Bárbara
+    waze_rua: 'T[uú]nel Santa B[aá]rbara'
+    comprimento_m: 1400
+    velocidade_max_kmh: 60
+    coords: [[-22.9195, -43.1985], [-22.9318, -43.1880]]
+    rotas:
+      - id: santa_barbara_laranjeiras
+        sentido: Catumbi → Laranjeiras
+        pico_sim: tarde
+        waze_route_id: null
+      - id: santa_barbara_catumbi
+        sentido: Laranjeiras → Catumbi
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: zuzu_angel
+    nome: Túnel Zuzu Angel
+    waze_rua: 'T[uú]nel Zuzu Angel'
+    comprimento_m: 1800
+    velocidade_max_kmh: 80
+    coords: [[-22.9839, -43.2382], [-22.9926, -43.2514]]
+    rotas:
+      - id: zuzu_angel_sao_conrado
+        sentido: Gávea → São Conrado
+        pico_sim: tarde
+        waze_route_id: null
+      - id: zuzu_angel_gavea
+        sentido: São Conrado → Gávea
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+
+  - id: acustico
+    nome: Túnel Acústico (Rafael Mascarenhas)
+    waze_rua: 'T[uú]nel Ac[uú]stico|Rafael Mascarenhas'
+    comprimento_m: 500
+    velocidade_max_kmh: 60
+    coords: [[-22.9820, -43.2343], [-22.9796, -43.2303]]
+    rotas:
+      - id: acustico_sao_conrado  # mão única; os congestionamentos do Waze correm no sentido Barra
+        sentido: Gávea → São Conrado
+        invertido: true
+        pico_sim: tarde
+        waze_route_id: null
+
+  - id: joa
+    nome: Túnel do Joá
+    waze_rua: 'T[uú]nel (do Jo[aá]|de S[aã]o Conrado)'
+    comprimento_m: 1500
+    velocidade_max_kmh: 80
+    coords: [[-23.0030, -43.2700], [-23.0105, -43.2905]]
+    rotas:
+      - id: joa_barra
+        sentido: São Conrado → Barra
+        pico_sim: tarde
+        waze_route_id: null
+      - id: joa_sao_conrado
+        sentido: Barra → São Conrado
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: tunel_velho
+    nome: Túnel Velho (Alaor Prata)
+    waze_rua: 'T[uú]nel (Velho|Alaor Prata)'
+    comprimento_m: 200
+    velocidade_max_kmh: 50
+    coords: [[-22.9565, -43.1909], [-22.9612, -43.1905]]
+    deteccao:
+      piso_dispersao_s: 6        # trecho curto: tempos de travessia menores
+    rotas:
+      - id: tunel_velho_copacabana
+        sentido: Botafogo → Copacabana
+        pico_sim: tarde
+        waze_route_id: null
+      - id: tunel_velho_botafogo
+        sentido: Copacabana → Botafogo
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: tunel_novo
+    nome: Túnel Novo (Eng. Coelho Cintra)
+    waze_rua: 'T[uú]nel (Novo|Eng\.? Coelho Cintra)'
+    comprimento_m: 250
+    velocidade_max_kmh: 50
+    coords: [[-22.9572, -43.1800], [-22.9610, -43.1772]]
+    deteccao:
+      piso_dispersao_s: 6
+    rotas:
+      - id: tunel_novo_copacabana
+        sentido: Botafogo → Copacabana
+        pico_sim: tarde
+        waze_route_id: null
+      - id: tunel_novo_botafogo
+        sentido: Copacabana → Botafogo
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: marcello_alencar
+    nome: Túnel Prefeito Marcello Alencar
+    waze_rua: 'T[uú]nel Pref(eito|\.)? Marcello Alencar'
+    comprimento_m: 3400
+    velocidade_max_kmh: 60
+    coords: [[-22.9020, -43.1735], [-22.8975, -43.1850], [-22.8960, -43.2005]]
+    rotas:
+      - id: marcello_alencar_gamboa
+        sentido: Praça XV → Gamboa
+        pico_sim: tarde
+        waze_route_id: null
+      - id: marcello_alencar_praca_xv
+        sentido: Gamboa → Praça XV
+        invertido: true
+        pico_sim: manha
+        waze_route_id: null
+
+  - id: noel_rosa
+    nome: Túnel Noel Rosa
+    waze_rua: 'T[uú]nel Noel Rosa'
+    comprimento_m: 900
+    velocidade_max_kmh: 60
+    coords: [[-22.9145, -43.2505], [-22.9050, -43.2585]]
+    rotas:
+      - id: noel_rosa_riachuelo
+        sentido: Vila Isabel → Riachuelo
+        pico_sim: ambos
+        waze_route_id: null
+      - id: noel_rosa_vila_isabel
+        sentido: Riachuelo → Vila Isabel
+        invertido: true
+        pico_sim: ambos
+        waze_route_id: null
+
+  - id: covanca
+    nome: Túnel da Covanca (Linha Amarela)
+    waze_rua: 'T[uú]nel (da Covanca|Eng\.? Raymundo de Paula Soares)'
+    comprimento_m: 2200
+    velocidade_max_kmh: 80
+    coords: [[-22.9445, -43.3495], [-22.9335, -43.3305]]
+    rotas:
+      - id: covanca_zona_norte
+        sentido: Jacarepaguá → Zona Norte
+        pico_sim: manha
+        waze_route_id: null
+      - id: covanca_jacarepagua
+        sentido: Zona Norte → Jacarepaguá
+        invertido: true
+        pico_sim: tarde
+        waze_route_id: null
+
+  - id: grota_funda
+    nome: Túnel da Grota Funda (Vice-Pres. José Alencar)
+    waze_rua: 'T[uú]nel (da Grota Funda|Vice[- ]Pres(idente|\.)? Jos[eé] Alencar)'
+    comprimento_m: 1100
+    velocidade_max_kmh: 70
+    coords: [[-23.0110, -43.5345], [-23.0157, -43.5222]]
+    rotas:
+      - id: grota_funda_recreio
+        sentido: Guaratiba → Recreio
+        pico_sim: manha
+        waze_route_id: null
+      - id: grota_funda_guaratiba
+        sentido: Recreio → Guaratiba
+        invertido: true
+        pico_sim: tarde
+        waze_route_id: null
