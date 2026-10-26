@@ -144,6 +144,9 @@ ESTILO = f"""
 
 .topo {{ display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap;
         border-bottom:3px solid var(--texto); padding-bottom:16px; }}
+.voltar-painel {{ display:inline-flex; align-items:center; margin-bottom:10px; color:var(--real); font-size:.75rem;
+                 font-weight:700; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; }}
+.voltar-painel:hover, .voltar-painel:focus-visible {{ color:var(--texto); text-decoration:underline; }}
 .marca .pref {{ display:block; font-weight:500; font-size:.78rem; letter-spacing:.16em; color:var(--mudo); text-transform:uppercase; }}
 .marca .titulo {{ font-weight:900; font-size:3.6rem; line-height:.85; letter-spacing:-.04em; text-transform:uppercase; }}
 .marca .titulo span {{ color:var(--real); }}
@@ -499,7 +502,9 @@ def _html_topo(status: pd.DataFrame, agora: int) -> str:
                      f'<span><i style="background:{COR[chave]}"></i>{NOME_STATUS[chave]}</span></div>')
     return (
         '<div class="pcrj"><div class="topo">'
-        '<div class="marca"><span class="pref">Prefeitura Rio · Centro de Operações</span>'
+        '<div class="marca"><a class="voltar-painel" href="https://painel-cor.netlify.app/" '
+        'aria-label="Voltar ao painel de projetos COR">← Voltar ao painel</a>'
+        '<span class="pref">Prefeitura Rio · Centro de Operações</span>'
         '<div class="titulo">Túneis<span>.</span></div></div>'
         f'<div class="resumo-bloco"><div class="resumo">{"".join(itens)}</div>'
         f'<div class="resumo-nota">{len(por_tunel)} túneis e ponte · status do pior sentido · '
