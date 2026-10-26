@@ -1,0 +1,20 @@
+# Render (plano gratuito): coletor e painel no mesmo serviço, porque o plano grátis não tem worker nem disco.
+# O banco fica no disco temporário do serviço e é apagado a cada deploy ou reinício; até juntar 3 dias de
+# histórico, o típico vem do historicTime do Waze. Um ping externo a cada 10 min evita que o serviço durma.
+services:
+  - type: web
+    name: monitoramento-tuneis
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash render-start.sh
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: WAZE_TVT_FEED_URL
+        sync: false
+      - key: WAZE_TVT_FEED_URL_EXTRA
+        sync: false
+      - key: ALERTA_WEBHOOK_URL
+        sync: false
