@@ -144,9 +144,12 @@ ESTILO = f"""
 
 .topo {{ display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap;
         border-bottom:3px solid var(--texto); padding-bottom:16px; }}
-.voltar-painel {{ display:inline-flex; align-items:center; margin-bottom:10px; color:var(--real); font-size:.75rem;
-                 font-weight:700; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; }}
-.voltar-painel:hover, .voltar-painel:focus-visible {{ color:var(--texto); text-decoration:underline; }}
+.voltar-painel {{ display:inline-flex; align-items:center; gap:12px; height:40px; margin-bottom:10px;
+                 padding-right:38px; border-right:1px solid rgba(236,237,237,.28); color:var(--texto);
+                 font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; }}
+.voltar-painel::before {{ content:""; width:0; height:0; border-top:7px solid transparent;
+                         border-bottom:7px solid transparent; border-right:12px solid var(--real); }}
+.voltar-painel:hover, .voltar-painel:focus-visible {{ color:var(--real); text-decoration:underline; }}
 .marca .pref {{ display:block; font-weight:500; font-size:.78rem; letter-spacing:.16em; color:var(--mudo); text-transform:uppercase; }}
 .marca .titulo {{ font-weight:900; font-size:3.6rem; line-height:1; letter-spacing:-.01em; text-transform:uppercase;
                   margin-top:6px; }}
@@ -495,7 +498,7 @@ def _html_topo(status: pd.DataFrame, agora: int) -> str:
     return (
         '<div class="pcrj"><div class="topo">'
         '<div class="marca"><a class="voltar-painel" href="https://painel-cor.netlify.app/" '
-        'aria-label="Voltar ao painel de projetos COR">← Voltar ao painel</a>'
+        'aria-label="Voltar ao painel de projetos COR">VOLTAR</a>'
         '<span class="pref">Prefeitura Rio · Centro de Operações</span>'
         '<div class="titulo">Túneis<span>.</span></div></div>'
         f'<div class="resumo-bloco"><div class="resumo">{"".join(itens)}</div>'
