@@ -919,7 +919,7 @@ if visao == "Análise":
     nome_tipo = c3.selectbox("Tipo de dia", list(TIPOS_DIA), label_visibility="collapsed")
 else:
     # janela do gráfico: o padrão mostra o momento atual; as maiores trazem o passado
-    horas = c2.segmented_control("Janela", [0.5, 1, 3, 6, 12, 24], default=1,
+    horas = c2.segmented_control("Janela", [0.5, 1, 3, 6, 12, 24], default=0.5,
                                  format_func=lambda h: "30 min" if h < 1 else f"{h:g} h",
                                  label_visibility="collapsed") or 1
     ordenar = c3.toggle("Problemas primeiro", value=True)
