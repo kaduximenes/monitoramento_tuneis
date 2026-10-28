@@ -1,5 +1,7 @@
 # Monitoramento de Túneis — Rio de Janeiro
 
+**Manual do usuário:** [MANUAL_DO_USUARIO.md](MANUAL_DO_USUARIO.md)
+
 Detecta anomalias no **tempo de travessia** dos túneis da cidade comparando cada leitura com o
 tempo típico daquele trecho, sentido, tipo de dia e horário. Fonte de dados: feed **Traffic View
 do Waze for Cities**.

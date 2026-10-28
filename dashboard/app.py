@@ -207,9 +207,6 @@ ESTILO = f"""
 .tunel.compacto .graf {{ padding:6px 18px; justify-content:center; }}
 .tunel.compacto .graf .eixo {{ display:none; }}
 .tunel.compacto .plot {{ height:34px; }}
-.graf .auto {{ display:none; margin-left:12px; color:var(--real); text-decoration:underline; cursor:pointer;
-              text-transform:none; letter-spacing:0; }}
-.tunel.fixado .graf .auto {{ display:inline; }}
 .gs {{ display:none; flex-direction:column; flex:1; min-width:0; }}
 .gs.on {{ display:flex; }}
 .sentido .dest {{ font-size:.74rem; letter-spacing:.1em; color:var(--mudo); text-transform:uppercase; line-height:1.25;
@@ -341,7 +338,6 @@ SCRIPT_SENTIDO = """
     if (!alvo) return false;
     tunel.querySelectorAll(".gs").forEach(g => g.classList.toggle("on", g === alvo));
     tunel.querySelectorAll(".sentido[data-rota]").forEach(c => c.classList.toggle("ativo", c.dataset.rota === rota));
-    tunel.classList.toggle("fixado", rota !== tunel.dataset.padrao);  // diferente do automático (pior sentido)
     return true;
   };
   const tecla = (el, fn) => el.addEventListener("keydown", ev => {
@@ -358,11 +354,6 @@ SCRIPT_SENTIDO = """
       };
       card.addEventListener("click", escolher);
       tecla(card, escolher);
-    });
-    tunel.querySelectorAll(".auto").forEach(bt => {
-      const voltar = ev => { ev.stopPropagation(); delete escolhas[id]; salvar(); mostrar(tunel, tunel.dataset.padrao); };
-      bt.addEventListener("click", voltar);
-      tecla(bt, voltar);
     });
   });
 })();
@@ -603,7 +594,7 @@ def _grafico(r, series: dict, desde: int, agora: int) -> str:
     meio = datetime.fromtimestamp((inicio + agora) // 2, TZ)
     titulo = "gráfico" if r.sentido == SENTIDO_UNICO else f"gráfico: → {_esc(_destino(r.sentido))}"
     return (
-        f'<div class="esc"><span>{titulo}<span class="auto" role="button" tabindex="0">fixado · voltar ao automático</span></span>'
+        f'<div class="esc"><span>{titulo}</span>'
         f'<span>escala {_mmss(y_min * 60)} a {_mmss(y_max * 60)}</span></div>'
         + _svg(s, inicio, agora, y_min, y_max)
         + f'<div class="eixo"><span>{_hhmm(inicio)}</span><span>{meio:%H:%M}</span><span>agora</span></div>'
