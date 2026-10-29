@@ -133,6 +133,21 @@ class Config:
         self.rotas = tuple(self._por_id.values())
         return novas
 
+    def sincronizar_feed(self, rotas) -> tuple[list[Rota], list[Rota]]:
+        """Substitui o conjunto de rotas vindas do feed pelos ids informados.
+
+        As rotas do YAML não são tocadas. Retorna (novas, removidas): as que sumiram do feed
+        (renomeadas ou recriadas no Partner Hub) saem do painel em vez de virar coluna vazia.
+        """
+        ids = {r.id for r in rotas}
+        removidas = [r for r in self.rotas if r.waze_feed_id is not None and r.id not in ids]
+        novas = [r for r in rotas if r.id not in self._por_id]
+        self._por_id.update({r.id: r for r in rotas})
+        for r in removidas:
+            self._por_id.pop(r.id, None)
+        self.rotas = tuple(self._por_id.values())
+        return novas, removidas
+
 
 def carregar_config(caminho: str | Path | None = None) -> Config:
     load_dotenv(RAIZ / ".env")

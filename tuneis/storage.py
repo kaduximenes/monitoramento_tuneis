@@ -126,7 +126,16 @@ def carregar_geometrias(conn: sqlite3.Connection) -> dict[str, list[list[float]]
 
 # --- rotas do feed -------------------------------------------------------------
 
-def salvar_rotas_feed(conn: sqlite3.Connection, ts: int, rotas: dict[str, dict]) -> None:
+def salvar_rotas_feed(conn: sqlite3.Connection, ts: int, rotas: dict[str, dict], podar: bool = False) -> None:
+    """Grava o retrato das rotas do feed. Com `podar`, apaga as que sumiram do feed.
+
+    Rota renomeada ou recriada no Partner Hub ganha outro id: sem a poda, a antiga continuaria
+    no painel como uma coluna sem leituras.
+    """
+    if podar:
+        conn.executemany("DELETE FROM rotas_feed WHERE rota_id = ?",
+                         [(r,) for r in {r["rota_id"] for r in conn.execute("SELECT rota_id FROM rotas_feed")}
+                          - set(rotas)])
     conn.executemany("INSERT OR REPLACE INTO rotas_feed VALUES (?, ?, ?)",
                      [(rota_id, ts, json.dumps(dados, ensure_ascii=False)) for rota_id, dados in rotas.items()])
 

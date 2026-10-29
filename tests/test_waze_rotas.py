@@ -33,6 +33,20 @@ class _Fonte(FonteWaze):
         return FEED
 
 
+class _FonteVariavel(FonteWaze):
+    """Feed que muda entre ciclos: simula rotas recriadas no Partner Hub."""
+
+    def __init__(self, cfg, feeds):
+        super().__init__(cfg, url="x")
+        self.feeds = feeds
+        self.i = 0
+
+    def baixar_feed(self, url: str | None = None) -> dict:
+        feed = self.feeds[min(self.i, len(self.feeds) - 1)]
+        self.i += 1
+        return feed
+
+
 def test_rotas_do_feed_viram_trechos(cfg, conn):
     cfg = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile(".")))
     avs = ciclo(conn, cfg, _Fonte(cfg, url="x"), {})
@@ -119,3 +133,46 @@ def test_segunda_mao_do_marcello_alencar(cfg):
     assert {r.tunel_nome for r in rotas} == {"Túnel Marcello Alencar"}
     assert len({r.tunel_id for r in rotas}) == 1  # um cartão só, com as duas mãos
     assert sorted(r.id for r in rotas) == ["waze_1", "waze_2"]  # ids distintos para as duas séries
+
+
+def test_rotas_recriadas_no_waze_substituem_as_antigas(cfg, conn):
+    """Zuzu Angel recriado nos dois sentidos: ids novos entram, os antigos saem do painel."""
+    linha = [(-22.984, -43.238), (-22.993, -43.251)]
+
+    def feed(ids, nome="Túnel Zuzu Angel"):
+        return {"updateTime": TS * 1000, "routes": [
+            _rota(ids[0], f"Rota: {nome} - Sentido São Conrado", 120, 110, linha),
+            _rota(ids[1], f"Rota: {nome} - Sentido Gávea", 130, 125, linha),
+        ]}
+
+    cfg = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("Zuzu")))
+    fonte = _FonteVariavel(cfg, [feed(("antigo_a", "antigo_b")), feed(("novo_a", "novo_b"))])
+    ciclo(conn, cfg, fonte, {})
+    assert sorted(r.id for r in cfg.rotas) == ["waze_antigo_a", "waze_antigo_b"]
+
+    ciclo(conn, cfg, fonte, {}, agora_ts=TS + 120)  # rotas recriadas no Waze
+    sentidos = sorted((r.sentido, r.id) for r in cfg.rotas)
+    assert sentidos == [("Gávea", "waze_novo_b"), ("São Conrado", "waze_novo_a")]
+    assert len({r.tunel_id for r in cfg.rotas}) == 1  # continuam no mesmo cartão, duas mãos
+    assert set(storage.carregar_rotas_feed(conn)) == {"waze_novo_a", "waze_novo_b"}  # antigas podadas
+
+
+def test_feed_fora_do_ar_nao_apaga_rotas(cfg, conn):
+    """Falha de leitura mantém as rotas: só um retrato completo do feed pode podar."""
+    import pytest
+    import requests
+
+    class _Falha(_Fonte):
+        def baixar_feed(self, url: str | None = None) -> dict:
+            raise requests.RequestException("fora do ar")
+
+    cfg = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("Zuzu|Rebouças")))
+    ciclo(conn, cfg, _Fonte(cfg, url="x"), {})
+    antes = sorted(r.id for r in cfg.rotas)
+    salvas = set(storage.carregar_rotas_feed(conn))
+    assert antes
+
+    with pytest.raises(requests.RequestException):
+        _Falha(cfg, url="x").coletar()
+    assert sorted(r.id for r in cfg.rotas) == antes
+    assert set(storage.carregar_rotas_feed(conn)) == salvas

@@ -22,6 +22,9 @@ class ResultadoColeta:
     geometrias: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
     ausentes: list[str] = field(default_factory=list)  # rotas configuradas que não vieram no feed
     rotas_feed: dict[str, dict] = field(default_factory=dict)  # rota_id -> atributos da rota no feed de rotas
+    # True quando todos os feeds responderam: aí o retrato das rotas está completo e as que
+    # sumiram podem ser removidas do banco (feed fora do ar não apaga rota nenhuma)
+    podar_rotas_feed: bool = False
 
 
 class Baseline(NamedTuple):

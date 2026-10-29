@@ -40,7 +40,8 @@ def ciclo(
     for rota_id, coords in res.geometrias.items():
         storage.salvar_geometria(conn, rota_id, coords)
     if res.rotas_feed:
-        storage.salvar_rotas_feed(conn, max((l.ts for l in res.leituras), default=int(time.time())), res.rotas_feed)
+        storage.salvar_rotas_feed(conn, max((l.ts for l in res.leituras), default=int(time.time())),
+                                  res.rotas_feed, podar=res.podar_rotas_feed)
     avaliacoes = [
         processar_leitura(conn, cfg, leitura, baselines, notificador)
         for leitura in res.leituras

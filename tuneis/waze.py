@@ -242,10 +242,12 @@ def alertas_da_rota(rw: dict) -> list[dict]:
 
 
 def carregar_rotas_feed(conn: sqlite3.Connection, cfg: Config) -> list[Rota]:
-    """Inclui na configuração as rotas do feed já vistas (as que ainda passam no filtro)."""
+    """Sincroniza a configuração com as rotas do feed já vistas (as que ainda passam no filtro)."""
     rotas = [rota_do_feed(rw, cfg) for rw in storage.carregar_rotas_feed(conn).values()
              if cfg.feed_rotas.aceita(_nome(rw))]
-    cfg.incluir(rotas)
+    _, removidas = cfg.sincronizar_feed(rotas)
+    for r in removidas:  # rota que saiu do feed (ou entrou na lista de exclusão) deixa o painel
+        log.info("Rota fora do feed: %s (id %s)", r.nome, r.waze_feed_id)
     return rotas
 
 
@@ -299,4 +301,12 @@ class FonteWaze:
             resultado.rotas_feed.update(res.rotas_feed)
         if len(falhas) == len(self.urls):
             raise falhas[0]
+        # Rotas apagadas/recriadas no Partner Hub saem do painel. Só vale quando todos os feeds
+        # responderam: um feed fora do ar não pode apagar as rotas dos outros.
+        resultado.podar_rotas_feed = not falhas
+        if resultado.podar_rotas_feed:
+            _, removidas = self.cfg.sincronizar_feed(
+                [r for r in self.cfg.rotas if r.waze_feed_id is not None and r.id in resultado.rotas_feed])
+            for r in removidas:
+                log.info("Rota apagada ou renomeada no Waze: %s (id %s)", r.nome, r.waze_feed_id)
         return resultado
