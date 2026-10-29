@@ -67,8 +67,8 @@ def test_padrao_de_nomes_dos_tuneis(cfg):
     filtro = carregar_config().feed_rotas.filtro_nome  # o do config/tuneis.yaml
     linha = [(-22.95, -43.19), (-22.96, -43.19)]
     nomes = {
-        "Rota: Túnel Velho - Sentido Copacabana": ("Túnel Velho", "Copacabana"),
-        "Rota: Túnel Major Vaz": ("Túnel Major Vaz", "sentido único"),
+        "Rota: Túnel Rebouças - Sentido Copacabana": ("Túnel Rebouças", "Copacabana"),
+        "Rota: Túnel Acústico": ("Túnel Acústico", "sentido único"),
         "Rota: Túnel da Grota Funda x Estação BRT Magarça  -  Via Dom João VI": None,  # corredor
         "Rota: Túnel Santa Bárbara (Laranjeiras - S. Centro) - Radial Oeste (Maracanã) - Via Pres Vargas": None,
         "Rota: Aterro (SDU - S. Porto) - Rua Barão de Tefé - Via Túnel Rio 450": None,
@@ -77,3 +77,24 @@ def test_padrao_de_nomes_dos_tuneis(cfg):
     cfg = replace(cfg, feed_rotas=replace(cfg.feed_rotas, filtro_nome=filtro))
     lidas = {rw["name"]: rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)}
     assert {n: (r.tunel_nome, r.sentido) for n, r in lidas.items()} == {n: v for n, v in nomes.items() if v}
+
+
+def test_tuneis_fora_do_painel(cfg):
+    """`feed_rotas.excluir` tira túneis do painel sem mexer no filtro de nome do feed."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rotas_do_feed
+
+    fora = ["Rota: Túnel Velho - Sentido Copacabana", "Rota: Túnel Novo - Sentido Botafogo",
+            "Rota: Túnel Noel Rosa - Sentido Riachuelo", "Rota: Túnel Nina Rabha - Sentido Centro",
+            "Rota: Túnel Major Vaz", "Rota: Túnel João Ricardo - Sentido Laranjeiras",
+            "Rota: Túnel Rua Alice - Sentido Cosme Velho"]
+    dentro = ["Rota: Túnel Rebouças - Sentido Lagoa", "Rota: Túnel Santa Bárbara - Sentido Laranjeiras"]
+    linha = [(-22.95, -43.19), (-22.96, -43.19)]
+    feed = {"routes": [_rota(str(i), nome, 60, 50, linha) for i, nome in enumerate(fora + dentro)]}
+
+    cfg = replace(cfg, feed_rotas=carregar_config().feed_rotas)  # o do config/tuneis.yaml
+    assert [rw["name"] for rw in rotas_do_feed(feed, cfg)] == dentro
+
+    # sem a exclusão, os mesmos nomes voltam a entrar (o filtro de nome continua aceitando todos)
+    todos = replace(cfg.feed_rotas, excluir=())
+    assert len(rotas_do_feed(feed, replace(cfg, feed_rotas=todos))) == len(fora) + len(dentro)

@@ -42,15 +42,15 @@ def test_problemas_de_cadastro(cfg):
 
     perc = [(-43.18, -22.90), (-43.20, -22.89)]
     feed = {"routes": [
-        rota("Rota: Túnel Novo - Sentido Copacabana", 2729, 151, perc),
+        rota("Rota: Túnel Rebouças - Sentido Copacabana", 2729, 151, perc),
         rota("Rota: Túnel Marcello Alencar - Sentido Aterro", 2729, 151, perc),   # mesmo percurso
-        rota("Rota: Túnel Novo - Sentido Aterro", 0, 0, []),                       # vazia
+        rota("Rota: Túnel Rebouças - Sentido Aterro", 0, 0, []),                   # vazia
         rota("Rota: Túnel Zuzu Angel - Sentido Barra", 15659, 1567, [(-43.23, -22.98), (-43.35, -23.0)]),
-        rota("Rota: Túnel Velho - Sentido Botafogo", 407, 36, [(-43.19, -22.95), (-43.19, -22.96)]),
+        rota("Rota: Túnel Santa Bárbara - Sentido Botafogo", 407, 36, [(-43.19, -22.95), (-43.19, -22.96)]),
     ]}
     cfg = replace(cfg, feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("T[uú]nel")))
     achados = {p["nome"]: p["problema"] for p in problemas_cadastro(feed, cfg)}
-    assert set(achados) == {"Rota: Túnel Marcello Alencar - Sentido Aterro", "Rota: Túnel Novo - Sentido Aterro",
+    assert set(achados) == {"Rota: Túnel Marcello Alencar - Sentido Aterro", "Rota: Túnel Rebouças - Sentido Aterro",
                             "Rota: Túnel Zuzu Angel - Sentido Barra"}
-    assert "Túnel Novo - Sentido Copacabana" in achados["Rota: Túnel Marcello Alencar - Sentido Aterro"]
+    assert "Túnel Rebouças - Sentido Copacabana" in achados["Rota: Túnel Marcello Alencar - Sentido Aterro"]
     assert "15,7 km" in achados["Rota: Túnel Zuzu Angel - Sentido Barra"]
