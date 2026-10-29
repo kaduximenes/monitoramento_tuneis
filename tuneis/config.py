@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 import os
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -78,7 +79,12 @@ class GrupoRota:
 
 # Corredor que apenas cita o túnel no nome (mesmo critério do `filtro_nome`): um `agrupar`
 # não deve trazê-lo para dentro do cartão do túnel.
-_CORREDOR = re.compile(r"\(|\s-\s+Via\b", re.I)
+_CORREDOR_VIA = re.compile(r"\s-\s+Via\b", re.I)  # "... - Via Pres Vargas": sempre corredor
+_TEM_PARENTESES = re.compile(r"\(")
+
+
+def _sem_acento(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)).lower()
 
 
 @dataclass(frozen=True)
@@ -91,9 +97,17 @@ class ParametrosFeedRotas:
     agrupar: tuple[GrupoRota, ...] = ()  # rotas que devem cair num túnel/sentido já existente
 
     def grupo(self, nome: str) -> GrupoRota | None:
-        if _CORREDOR.search(nome):  # corredor que só cita o túnel: fica fora do cartão
+        if _CORREDOR_VIA.search(nome):  # "... - Via ...": corredor que só cita o túnel
             return None
-        return next((g for g in self.agrupar if g.nome.search(nome)), None)
+        for g in self.agrupar:
+            if not g.nome.search(nome):
+                continue
+            # Parênteses costumam indicar corredor, mas também podem trazer o sentido:
+            # aceita quando o sentido configurado aparece no nome. Ex.: "Túnel X (Rodoviária)".
+            if _TEM_PARENTESES.search(nome) and not (g.sentido and _sem_acento(g.sentido) in _sem_acento(nome)):
+                return None
+            return g
+        return None
 
     def aceita(self, nome: str) -> bool:
         """Entra no painel: não está em `excluir` e casa com `filtro_nome` ou com um `agrupar`."""

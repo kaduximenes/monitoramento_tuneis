@@ -135,6 +135,56 @@ def test_segunda_mao_do_marcello_alencar(cfg):
     assert sorted(r.id for r in rotas) == ["waze_1", "waze_2"]  # ids distintos para as duas séries
 
 
+def test_mao_nova_entra_mesmo_sem_geometria(cfg):
+    """Rota recém-criada no Partner Hub pode chegar sem `line`: o cartão não fica com um sentido só."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rota_do_feed, rotas_do_feed
+
+    linha = [(-22.90, -43.18), (-22.89, -43.20)]
+    feed = {"routes": [
+        _rota("1", "Rota: Túnel Marcello Alencar - Sentido Aterro", 60, 50, linha),
+        {**_rota("2", "Rota: Túnel Marcello Alencar - Sentido Rodoviária", 70, 60, []), "line": []},
+    ]}
+    cfg = replace(cfg, feed_rotas=carregar_config().feed_rotas)
+    rotas = [rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)]
+
+    assert sorted(r.sentido for r in rotas) == ["Aterro", "Rodoviária"]
+    assert len({r.tunel_id for r in rotas}) == 1
+    assert rotas[1].coords == ()  # sem geometria: o mapa simplesmente não desenha
+
+
+def test_mao_com_sentido_entre_parenteses(cfg):
+    """`Túnel X (Rodoviária)` não é corredor: traz o sentido e deve entrar no cartão."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rota_do_feed, rotas_do_feed
+
+    linha = [(-22.90, -43.18), (-22.89, -43.20)]
+    feed = {"routes": [
+        _rota("1", "Rota: Túnel Marcello Alencar (Rodoviária)", 70, 60, linha),
+        # corredor de verdade: segue fora, mesmo citando o sentido
+        _rota("2", "Rota: Túnel Pref. Marcello Alencar (Aterro - S. Centro) - Via Pres Vargas", 90, 60, linha),
+    ]}
+    cfg = replace(cfg, feed_rotas=carregar_config().feed_rotas)
+    rotas = [rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)]
+
+    assert [(r.tunel_nome, r.sentido) for r in rotas] == [("Túnel Marcello Alencar", "Rodoviária")]
+
+
+def test_tunel_450_fora_do_painel(cfg):
+    """O Túnel Rio 450 saiu do monitoramento; o corredor que o cita também não entra."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rotas_do_feed
+
+    linha = [(-22.90, -43.18), (-22.89, -43.20)]
+    feed = {"routes": [
+        _rota("1", "Rota: Túnel Rio 450 - Sentido Aterro", 60, 50, linha),
+        _rota("2", "Rota: Aterro (SDU - S. Porto) - Rua Barão de Tefé - Via Túnel Rio 450", 60, 50, linha),
+        _rota("3", "Rota: Túnel Rebouças - Sentido Lagoa", 60, 50, linha),
+    ]}
+    cfg = replace(cfg, feed_rotas=carregar_config().feed_rotas)
+    assert [rw["name"] for rw in rotas_do_feed(feed, cfg)] == ["Rota: Túnel Rebouças - Sentido Lagoa"]
+
+
 def test_rotas_recriadas_no_waze_substituem_as_antigas(cfg, conn):
     """Zuzu Angel recriado nos dois sentidos: ids novos entram, os antigos saem do painel."""
     linha = [(-22.984, -43.238), (-22.993, -43.251)]

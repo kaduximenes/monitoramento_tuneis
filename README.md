@@ -53,8 +53,9 @@ detecta sozinho qual é:
     O filtro atual pega só os túneis em si (`Rota: Túnel X` ou `Rota: Túnel X - Sentido Y`) e deixa
     de fora os corredores que citam um túnel (com parênteses ou `- Via ...` no nome).
   - **Quais ficam de fora:** `feed_rotas.excluir` recebe uma regex por túnel (Túnel Velho, Túnel Novo,
-    Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice). Elas valem sobre o `name` do feed, então
-    o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a linha para ele voltar.
+    Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice, Túnel Rio 450). Elas valem sobre o
+    `name` do feed, então o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a
+    linha para ele voltar.
   - **Rota editada no Partner Hub:** se um túnel é renomeado ou tem a rota recriada nos dois sentidos,
     o id antigo deixa de existir no feed e o sistema troca a rota sozinho: a nova entra como um sentido
     do mesmo cartão e a antiga sai do painel (não fica como coluna sem leituras). A remoção só acontece
@@ -65,8 +66,10 @@ detecta sozinho qual é:
     painel, útil quando o nome no feed foge do padrão. O `tunel` define o cartão (rotas com o mesmo
     `tunel` ficam juntas, com uma coluna por sentido) e o `sentido` é o rótulo exibido. Exemplo em uso:
     as duas mãos do Marcello Alencar, `Aterro` e `Rodoviária`, caem no mesmo cartão. A rota entra por
-    essa lista mesmo sem casar com o `filtro_nome`. Para conferir o resultado, rode
-    `python -m tuneis waze-rotas`, que lista cada rota do feed com o túnel e o sentido que ela assume.
+    essa lista mesmo sem casar com o `filtro_nome`, com o sentido entre parênteses no nome e **mesmo sem
+    geometria** (`line`) no feed — rota recém-criada no Partner Hub pode chegar sem ela, e aí só o mapa
+    deixa de desenhar aquela mão. Para conferir o resultado, rode `python -m tuneis waze-rotas`, que
+    lista cada rota do feed com o túnel e o sentido que ela assume.
   - **Sentidos:** o nome segue o padrão `Rota: <túnel> - Sentido <destino>`. Os sentidos do mesmo
     túnel (ex.: `Rota: Túnel Rebouças - Sentido Lagoa` e `... - Sentido Rio Comprido`) viram um só
     trecho no painel. Sem sentido no nome, o túnel aparece como mão única.

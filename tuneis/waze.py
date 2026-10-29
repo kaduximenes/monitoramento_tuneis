@@ -187,7 +187,7 @@ def rota_do_feed(rw: dict, cfg: Config) -> Rota:
         sentido=destino,
         comprimento_m=float(rw.get("length") or 0),
         velocidade_max_kmh=cfg.feed_rotas.velocidade_livre_kmh,
-        coords=tuple((p["y"], p["x"]) for p in rw["line"]),
+        coords=tuple((p["y"], p["x"]) for p in rw.get("line") or []),
         waze_route_id=str(rw["id"]),
         waze_nome=None,
         waze_rua=None,
@@ -198,11 +198,17 @@ def rota_do_feed(rw: dict, cfg: Config) -> Rota:
 
 
 def rotas_do_feed(feed: dict, cfg: Config) -> list[dict]:
-    """Rotas do feed que passam no filtro de nome e têm geometria."""
+    """Rotas do feed que passam no filtro de nome.
+
+    Rota descoberta pelo nome precisa de geometria (é ela que desenha o mapa); rota declarada
+    em `feed_rotas.agrupar` entra mesmo sem `line` — recém-criada no Partner Hub, a geometria
+    pode levar alguns minutos para aparecer, e o cartão não deve ficar com um sentido só.
+    """
     return [
         rw for rw in feed.get("routes") or []
-        if rw.get("id") is not None and len(rw.get("line") or []) >= 2
+        if rw.get("id") is not None
         and cfg.feed_rotas.aceita(_nome(rw))
+        and (len(rw.get("line") or []) >= 2 or cfg.feed_rotas.grupo(_nome(rw)) is not None)
     ]
 
 
@@ -219,7 +225,11 @@ def problemas_cadastro(feed: dict, cfg: Config) -> list[dict]:
     for rw in rotas:
         nome, linha, extensao = _nome(rw), rw.get("line") or [], rw.get("length") or 0
         if len(linha) < 2 or not extensao or not rw.get("time"):
-            out.append({"nome": nome, "problema": "rota vazia no feed (sem extensão ou sem tempo): fica fora do painel"})
+            if cfg.feed_rotas.grupo(nome) is not None:  # veio de `agrupar`: entra sem geometria
+                out.append({"nome": nome, "problema": "sem geometria (`line`) no feed: o tempo aparece "
+                                                       "no painel, mas o mapa não desenha esta mão"})
+            else:
+                out.append({"nome": nome, "problema": "rota vazia no feed (sem extensão ou sem tempo): fica fora do painel"})
             continue
         chave = (extensao, round(linha[0]["x"], 4), round(linha[0]["y"], 4), round(linha[-1]["x"], 4), round(linha[-1]["y"], 4))
         if chave in percursos:
