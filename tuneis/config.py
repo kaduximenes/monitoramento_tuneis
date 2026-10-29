@@ -69,6 +69,11 @@ class ParametrosFeedRotas:
 
     filtro_nome: re.Pattern  # só as rotas cujo `name` casa com isso
     velocidade_livre_kmh: float  # o feed não traz o fluxo livre: estimado por extensão / velocidade
+    excluir: tuple[re.Pattern, ...] = ()  # túneis tirados do painel, mesmo passando no filtro
+
+    def aceita(self, nome: str) -> bool:
+        """Entra no painel: casa com `filtro_nome` e não casa com nenhum padrão de `excluir`."""
+        return bool(self.filtro_nome.search(nome)) and not any(p.search(nome) for p in self.excluir)
 
 
 @dataclass
@@ -150,6 +155,7 @@ def carregar_config(caminho: str | Path | None = None) -> Config:
         feed_rotas=ParametrosFeedRotas(
             filtro_nome=re.compile(feed_rotas.get("filtro_nome", r"T[uú]nel"), re.I),
             velocidade_livre_kmh=float(feed_rotas.get("velocidade_livre_kmh", 60)),
+            excluir=tuple(re.compile(p, re.I) for p in feed_rotas.get("excluir") or ()),
         ),
         deteccao_padrao=ParametrosDeteccao(**det_global),
     )

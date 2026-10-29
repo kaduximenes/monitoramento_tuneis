@@ -52,6 +52,9 @@ detecta sozinho qual é:
     `config/tuneis.yaml`. Elas entram sozinhas, sem precisar estar na lista de túneis.
     O filtro atual pega só os túneis em si (`Rota: Túnel X` ou `Rota: Túnel X - Sentido Y`) e deixa
     de fora os corredores que citam um túnel (com parênteses ou `- Via ...` no nome).
+  - **Quais ficam de fora:** `feed_rotas.excluir` recebe uma regex por túnel (Túnel Velho, Túnel Novo,
+    Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice). Elas valem sobre o `name` do feed, então
+    o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a linha para ele voltar.
   - **Sentidos:** o nome segue o padrão `Rota: <túnel> - Sentido <destino>`. Os sentidos do mesmo
     túnel (ex.: `Rota: Túnel Velho - Sentido Botafogo` e `... - Sentido Copacabana`) viram um só
     trecho no painel. Sem sentido no nome, o túnel aparece como mão única.

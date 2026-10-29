@@ -198,7 +198,7 @@ def rotas_do_feed(feed: dict, cfg: Config) -> list[dict]:
     return [
         rw for rw in feed.get("routes") or []
         if rw.get("id") is not None and len(rw.get("line") or []) >= 2
-        and cfg.feed_rotas.filtro_nome.search(_nome(rw))
+        and cfg.feed_rotas.aceita(_nome(rw))
     ]
 
 
@@ -210,7 +210,7 @@ def _resumo_rota(rw: dict) -> dict:
 
 def problemas_cadastro(feed: dict, cfg: Config) -> list[dict]:
     """Rotas que passam no filtro de nome mas parecem mal cadastradas no Partner Hub."""
-    rotas = [rw for rw in feed.get("routes") or [] if cfg.feed_rotas.filtro_nome.search(_nome(rw))]
+    rotas = [rw for rw in feed.get("routes") or [] if cfg.feed_rotas.aceita(_nome(rw))]
     out, percursos = [], {}
     for rw in rotas:
         nome, linha, extensao = _nome(rw), rw.get("line") or [], rw.get("length") or 0
@@ -240,7 +240,7 @@ def alertas_da_rota(rw: dict) -> list[dict]:
 def carregar_rotas_feed(conn: sqlite3.Connection, cfg: Config) -> list[Rota]:
     """Inclui na configuração as rotas do feed já vistas (as que ainda passam no filtro)."""
     rotas = [rota_do_feed(rw, cfg) for rw in storage.carregar_rotas_feed(conn).values()
-             if cfg.feed_rotas.filtro_nome.search(_nome(rw))]
+             if cfg.feed_rotas.aceita(_nome(rw))]
     cfg.incluir(rotas)
     return rotas
 

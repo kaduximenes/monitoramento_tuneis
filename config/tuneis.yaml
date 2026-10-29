@@ -30,6 +30,16 @@ feed_rotas:
   filtro_nome: '^Rota:\s*T[uú]nel\b(?!.*\()(?!.*\s-\s+Via\b)|Ponte Rio-Niter[oó]i'
   velocidade_livre_kmh: 60     # o feed não traz o fluxo livre: extensão / esta velocidade
   incluir_tuneis_yaml: false   # true = monitora também a lista `tuneis` (feed de trânsito)
+  # Túneis fora do painel (regex no `name` do feed), mesmo passando no `filtro_nome` acima.
+  # Trechos curtos ou sem utilidade para a sala de operação: tirar daqui os devolve ao painel.
+  excluir:
+    - 'T[uú]nel Velho|Alaor Prata'
+    - 'T[uú]nel Novo|Coelho Cintra'
+    - 'Noel Rosa'
+    - 'Nina Rabha'
+    - 'Major Vaz'
+    - 'Jo[aã]o Ricardo'
+    - 'Rua Alice'
 
 # Parâmetros de detecção (globais; podem ser sobrescritos por túnel ou por rota)
 deteccao:
@@ -129,44 +139,6 @@ tuneis:
         pico_sim: manha
         waze_route_id: null
 
-  - id: tunel_velho
-    nome: Túnel Velho (Alaor Prata)
-    waze_rua: 'T[uú]nel (Velho|Alaor Prata)'
-    comprimento_m: 200
-    velocidade_max_kmh: 50
-    coords: [[-22.9565, -43.1909], [-22.9612, -43.1905]]
-    deteccao:
-      piso_dispersao_s: 6        # trecho curto: tempos de travessia menores
-    rotas:
-      - id: tunel_velho_copacabana
-        sentido: Botafogo → Copacabana
-        pico_sim: tarde
-        waze_route_id: null
-      - id: tunel_velho_botafogo
-        sentido: Copacabana → Botafogo
-        invertido: true
-        pico_sim: manha
-        waze_route_id: null
-
-  - id: tunel_novo
-    nome: Túnel Novo (Eng. Coelho Cintra)
-    waze_rua: 'T[uú]nel (Novo|Eng\.? Coelho Cintra)'
-    comprimento_m: 250
-    velocidade_max_kmh: 50
-    coords: [[-22.9572, -43.1800], [-22.9610, -43.1772]]
-    deteccao:
-      piso_dispersao_s: 6
-    rotas:
-      - id: tunel_novo_copacabana
-        sentido: Botafogo → Copacabana
-        pico_sim: tarde
-        waze_route_id: null
-      - id: tunel_novo_botafogo
-        sentido: Copacabana → Botafogo
-        invertido: true
-        pico_sim: manha
-        waze_route_id: null
-
   - id: marcello_alencar
     nome: Túnel Prefeito Marcello Alencar
     waze_rua: 'T[uú]nel Pref(eito|\.)? Marcello Alencar'
@@ -182,23 +154,6 @@ tuneis:
         sentido: Gamboa → Praça XV
         invertido: true
         pico_sim: manha
-        waze_route_id: null
-
-  - id: noel_rosa
-    nome: Túnel Noel Rosa
-    waze_rua: 'T[uú]nel Noel Rosa'
-    comprimento_m: 900
-    velocidade_max_kmh: 60
-    coords: [[-22.9145, -43.2505], [-22.9050, -43.2585]]
-    rotas:
-      - id: noel_rosa_riachuelo
-        sentido: Vila Isabel → Riachuelo
-        pico_sim: ambos
-        waze_route_id: null
-      - id: noel_rosa_vila_isabel
-        sentido: Riachuelo → Vila Isabel
-        invertido: true
-        pico_sim: ambos
         waze_route_id: null
 
   - id: covanca
