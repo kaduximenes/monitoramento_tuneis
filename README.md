@@ -55,6 +55,12 @@ detecta sozinho qual é:
   - **Quais ficam de fora:** `feed_rotas.excluir` recebe uma regex por túnel (Túnel Velho, Túnel Novo,
     Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice). Elas valem sobre o `name` do feed, então
     o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a linha para ele voltar.
+  - **Rota editada no Partner Hub:** se um túnel é renomeado ou tem a rota recriada nos dois sentidos,
+    o id antigo deixa de existir no feed e o sistema troca a rota sozinho: a nova entra como um sentido
+    do mesmo cartão e a antiga sai do painel (não fica como coluna sem leituras). A remoção só acontece
+    quando todos os feeds respondem no ciclo, então um feed fora do ar nunca apaga rota de outro.
+    A geometria é atualizada a cada leitura; o histórico do id novo começa vazio e fica em
+    **Calibrando** até acumular `min_dias` dias naquele horário.
   - **Juntar as mãos de um túnel:** `feed_rotas.agrupar` força uma rota para um túnel e um sentido do
     painel, útil quando o nome no feed foge do padrão. O `tunel` define o cartão (rotas com o mesmo
     `tunel` ficam juntas, com uma coluna por sentido) e o `sentido` é o rótulo exibido. Exemplo em uso:
