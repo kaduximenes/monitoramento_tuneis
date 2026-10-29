@@ -43,7 +43,7 @@ PRIORIDADE = {INTERDITADO: 5, CRITICO: 4, ATENCAO: 3, SEM_DADOS: 2, CALIBRANDO: 
 
 # Manual de Marca Prefeitura Rio 2025
 AZUL_MARINHO, AZUL_CLARO, CINZA_MARCA = "#13335a", "#42b9eb", "#eceded"
-COR_REAL, COR_TIPICO, COR_EXCESSO = AZUL_CLARO, CINZA_MARCA, AZUL_CLARO
+COR_REAL, COR_TIPICO = AZUL_CLARO, CINZA_MARCA
 FONTE = "'Cera Pro', Outfit, sans-serif"
 DIAS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"]
 # Mapa de calor do atraso: uma só matiz (azul da marca), mais claro = mais atraso.
@@ -169,7 +169,8 @@ ESTILO = f"""
 .legenda i {{ display:inline-block; vertical-align:middle; margin-right:6px; }}
 .legenda .l-real {{ width:22px; height:3px; background:var(--real); }}
 .legenda .l-tip {{ width:22px; border-top:2px dashed var(--tipico); }}
-.legenda .l-exc {{ width:14px; height:10px; background:{COR_EXCESSO}; opacity:.35; }}
+.legenda .l-at {{ width:22px; height:3px; background:{COR[ATENCAO]}; }}
+.legenda .l-cr {{ width:22px; height:3px; background:{COR[CRITICO]}; }}
 
 .quadro {{ display:flex; flex-direction:column; gap:6px; }}
 .tunel {{ display:grid; grid-template-columns:7px minmax(170px,230px) 172px 172px 1fr; background:var(--painel);
@@ -225,6 +226,8 @@ ESTILO = f"""
               gap:12px; flex-wrap:wrap; }}
 .plot {{ position:relative; height:118px; margin:4px 0 3px; }}
 .plot img {{ width:100%; height:100%; display:block; }}
+.plot .agora {{ position:absolute; width:9px; height:9px; border-radius:50%; background:var(--c); transform:translate(-50%,-50%);
+               box-shadow:0 0 0 3px rgba(12,35,64,.85), 0 0 0 4px var(--c); }}
 .hov {{ position:absolute; inset:0; display:flex; }}
 .hov span {{ flex:1; }}
 .hov span[title]:hover {{ background:rgba(236,237,237,.10); }}
@@ -387,18 +390,6 @@ def _tempo_html(segundos) -> str:
     return f"{s}<small>seg</small>"
 
 
-def _min_rotulo(minutos: float) -> str:
-    """Rótulo curto de escala, em minutos (aceita frações, ex. 0,5 min)."""
-    return f"{minutos:g} min".replace(".", ",")
-
-
-def _pct(x) -> str:
-    if pd.isna(x):
-        return "—"
-    sinal = "+" if x > 0 else ("−" if x < 0 else "")
-    return f"{sinal}{abs(x) * 100:.1f}%".replace(".", ",")
-
-
 def _hhmm(ts) -> str:
     return datetime.fromtimestamp(int(ts), TZ).strftime("%H:%M") if pd.notna(ts) else "—"
 
@@ -440,6 +431,11 @@ def _segmentos(s: pd.DataFrame, lacuna_s: int = 600):
     return [s.iloc[a:b] for a, b in zip(quebra, quebra[1:])]
 
 
+def _cor_nivel(nivel) -> str:
+    """A linha do gráfico assume a cor do status do momento: o dia vira uma faixa de leitura."""
+    return COR.get(nivel, COR_REAL) if nivel in (ATENCAO, CRITICO) else COR_REAL
+
+
 def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) -> str:
     W, H = 1000, 100
     span = max(agora - desde, 1)
@@ -453,21 +449,35 @@ def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) ->
     def pts(xs, ys):
         return " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
 
-    partes = []
+    partes, ultimo = [], None
     for seg in _segmentos(s):
         xs = X(seg["ts"])
         real, tip = seg["tempo_s"].to_numpy() / 60, seg["referencia_s"].to_numpy() / 60
-        topo = np.maximum(real, tip)
-        poligono = pts(xs, Y(topo)) + " " + pts(xs[::-1], Y(tip)[::-1])
-        partes.append(f'<polygon points="{poligono}" fill="{COR_EXCESSO}" opacity=".22"/>')
+        niveis = seg["nivel"].to_numpy() if "nivel" in seg else np.array([""] * len(seg))
+        cores = [_cor_nivel(n) for n in niveis]
+        # trechos de cor constante; cada um repete o ponto anterior para a linha não abrir buraco
+        cortes = [0, *(i for i in range(1, len(xs)) if cores[i] != cores[i - 1]), len(xs)]
+        for a, b in zip(cortes, cortes[1:]):
+            i0 = max(a - 1, 0)
+            xr, rr, tr, cor = xs[i0:b], real[i0:b], tip[i0:b], cores[a]
+            if cor != COR_REAL:  # área de excesso só onde há problema: o olho vai direto nela
+                poligono = pts(xr, Y(np.maximum(rr, tr))) + " " + pts(xr[::-1], Y(tr)[::-1])
+                partes.append(f'<polygon points="{poligono}" fill="{cor}" opacity=".20"/>')
+            partes.append(f'<polyline points="{pts(xr, Y(rr))}" fill="none" stroke="{cor}" stroke-width="2.4" '
+                          'stroke-linejoin="round" vector-effect="non-scaling-stroke"/>')
         partes.append(f'<polyline points="{pts(xs, Y(tip))}" fill="none" stroke="{COR_TIPICO}" stroke-width="1.5" '
                       'stroke-dasharray="5 4" vector-effect="non-scaling-stroke" opacity=".75"/>')
-        partes.append(f'<polyline points="{pts(xs, Y(real))}" fill="none" stroke="{COR_REAL}" stroke-width="2.4" '
-                      'stroke-linejoin="round" vector-effect="non-scaling-stroke"/>')
+        ultimo = (float(xs[-1]), float(Y(real[-1])), cores[-1])
 
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" preserveAspectRatio="none">'
            f'{"".join(partes)}</svg>')
     imagem = base64.b64encode(svg.encode()).decode()
+
+    # ponto da leitura mais recente: ancora o "agora" sem precisar de número no eixo
+    ponto = ""
+    if ultimo:
+        x, y, cor = ultimo
+        ponto = (f'<i class="agora" style="left:{x / W * 100:.2f}%;top:{y / H * 100:.2f}%;--c:{cor}"></i>')
 
     # camada de dicas ao passar o mouse: uma faixa por intervalo, com a última leitura dele
     ts = s["ts"].to_numpy()
@@ -481,7 +491,7 @@ def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) ->
         r = s.iloc[j]
         dica = f"{_hhmm(r.ts)} · real {_dur(r.tempo_s)} · típico {_dur(r.referencia_s)}"
         faixas.append(f'<span title="{_esc(dica)}"></span>')
-    return (f'<div class="plot"><img alt="" src="data:image/svg+xml;base64,{imagem}"/>'
+    return (f'<div class="plot"><img alt="" src="data:image/svg+xml;base64,{imagem}"/>{ponto}'
             f'<div class="hov">{"".join(faixas)}</div></div>')
 
 
@@ -556,7 +566,7 @@ def _html_sentido(r, ativo: bool, clicavel: bool) -> str:
         cor_delta, destaque = "var(--mudo)", ""
     sinal = "+" if dif >= 0 else "−"
     return (f'<div class="{cls}" style="--cor:{cor_delta}">{dest}<div class="tempo">{_tempo_html(r.tempo_s)}</div>'
-            f'<div class="delta {sentido_delta}{destaque}"><i></i>{sinal}{_dur(dif)} · {_pct(var)}</div>{ref}</div>')
+            f'<div class="delta {sentido_delta}{destaque}"><i></i>{sinal}{_dur(dif)}</div>{ref}</div>')
 
 
 def _avisos_por_tunel(conn, agora: int) -> dict[str, list[tuple[str, dict]]]:
@@ -613,12 +623,9 @@ def _grafico(r, series: dict, desde: int, agora: int) -> str:
     y_min, y_max = _faixa_y(valores.min(), valores.max())
     meio = datetime.fromtimestamp((inicio + agora) // 2, TZ)
     titulo = "gráfico" if r.sentido == SENTIDO_UNICO else f"gráfico: → {_esc(_destino(r.sentido))}"
-    return (
-        f'<div class="esc"><span>{titulo}</span>'
-        f'<span>escala {_min_rotulo(y_min)} a {_min_rotulo(y_max)}</span></div>'
-        + _svg(s, inicio, agora, y_min, y_max)
-        + f'<div class="eixo"><span>{_hhmm(inicio)}</span><span>{meio:%H:%M}</span><span>agora</span></div>'
-    )
+    return (f'<div class="esc"><span>{titulo}</span></div>'
+            + _svg(s, inicio, agora, y_min, y_max)
+            + f'<div class="eixo"><span>{_hhmm(inicio)}</span><span>{meio:%H:%M}</span><span>agora</span></div>')
 
 
 def _html_tunel(tunel_id: str, tunel_nome: str, rotas: pd.DataFrame, series: dict,
@@ -974,7 +981,8 @@ def quadro() -> None:
 
         legenda = (
             '<div class="legenda fixa"><span><i class="l-real"></i>tempo agora (Waze)</span>'
-            '<span><i class="l-tip"></i>tempo típico do horário</span><span><i class="l-exc"></i>acima do típico</span>'
+            '<span><i class="l-tip"></i>tempo típico do horário</span>'
+            '<span><i class="l-at"></i>atenção</span><span><i class="l-cr"></i>crítico</span>'
             f'<span>{_icone_alerta({"type": "ACCIDENT"}, 13)} acidente / interdição no Waze</span>'
             f'<span>{_icone_alerta({"type": "HAZARD"}, 13)} outro alerta do Waze (passe o mouse para detalhes)</span>'
             '<span>linha sob o sentido = sentido mostrado no gráfico · clique no outro sentido para trocar</span></div>'
