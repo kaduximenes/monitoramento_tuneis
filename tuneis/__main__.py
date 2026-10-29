@@ -13,7 +13,7 @@ from .baseline import recalcular_baselines
 from .coleta import backfill_simulado, executar
 from .config import carregar_config
 from .simulador import FonteSimulada, forcar_incidente
-from .waze import FonteWaze, parse_feed, parse_feed_trafego
+from .waze import FonteWaze, parse_feed, parse_feed_trafego, rota_do_feed, rotas_do_feed
 
 
 def _fonte(cfg, args):
@@ -87,6 +87,18 @@ def cmd_waze_rotas(cfg, args):
     print(f"\n{len(vinculadas)}/{len(cfg.rotas)} rotas configuradas encontradas no feed.")
     if faltando:
         print("Sem correspondência:", ", ".join(faltando))
+
+    # Como cada rota do feed vai aparecer no painel (túnel = cartão; sentido = coluna do cartão)
+    print("\nEntram no painel:")
+    por_tunel: dict[str, list[str]] = {}
+    for rw in rotas_do_feed(feed, cfg):
+        rota = rota_do_feed(rw, cfg)
+        por_tunel.setdefault(rota.tunel_nome, []).append(f"{rota.sentido} (id {rw['id']})")
+    for tunel in sorted(por_tunel):
+        print(f"  {tunel}: {' · '.join(por_tunel[tunel])}")
+    fora = [rw for rw in feed.get("routes") or [] if not cfg.feed_rotas.aceita(" ".join((rw.get("name") or "").split()))]
+    print(f"\n{len(feed.get('routes') or []) - len(fora)} de {len(feed.get('routes') or [])} rotas do feed "
+          f"entram no painel ({len(fora)} fora do filtro ou na lista `excluir`).")
 
 
 def cmd_status(cfg, args):

@@ -40,6 +40,18 @@ feed_rotas:
     - 'Major Vaz'
     - 'Jo[aã]o Ricardo'
     - 'Rua Alice'
+  # Rotas que devem cair no mesmo cartão de outra rota, mesmo com o nome fora do padrão
+  # "Rota: <túnel> - Sentido <destino>". `tunel` é o nome que define o cartão (as rotas com o
+  # mesmo `tunel` ficam juntas); `sentido` é o rótulo exibido no cartão e no gráfico.
+  # A rota entra no painel por aqui mesmo que não case com o `filtro_nome` acima.
+  agrupar:
+    # as duas mãos do Marcello Alencar no mesmo cartão: Aterro + Rodoviária
+    - nome: 'Alencar.*Aterro|Aterro.*Alencar'
+      tunel: Túnel Marcello Alencar
+      sentido: Aterro
+    - nome: 'Alencar.*Rodovi[aá]ria|Rodovi[aá]ria.*Alencar'
+      tunel: Túnel Marcello Alencar
+      sentido: Rodoviária
 
 # Parâmetros de detecção (globais; podem ser sobrescritos por túnel ou por rota)
 deteccao:

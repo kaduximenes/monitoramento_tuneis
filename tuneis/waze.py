@@ -176,6 +176,10 @@ def rota_do_feed(rw: dict, cfg: Config) -> Rota:
     if not via:  # sem sentido no nome: mão única
         via, destino = nome, SENTIDO_UNICO
     tunel = _LETRA_SENTIDO.sub("", via)
+    grupo = cfg.feed_rotas.grupo(_nome(rw))
+    if grupo is not None:  # nome fora do padrão: entra no túnel/sentido definidos na configuração
+        tunel = grupo.tunel
+        destino = grupo.sentido or destino
     return Rota(
         id=f"{PREFIXO_FEED}{rw['id']}",
         tunel_id=f"{PREFIXO_FEED}{_slug(tunel)}",

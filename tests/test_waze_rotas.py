@@ -98,3 +98,24 @@ def test_tuneis_fora_do_painel(cfg):
     # sem a exclusão, os mesmos nomes voltam a entrar (o filtro de nome continua aceitando todos)
     todos = replace(cfg.feed_rotas, excluir=())
     assert len(rotas_do_feed(feed, replace(cfg, feed_rotas=todos))) == len(fora) + len(dentro)
+
+
+def test_segunda_mao_do_marcello_alencar(cfg):
+    """A rota nova (sentido Rodoviária) entra no mesmo cartão da rota do sentido Aterro."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rota_do_feed, rotas_do_feed
+
+    linha = [(-22.90, -43.18), (-22.89, -43.20)]
+    feed = {"routes": [
+        _rota("1", "Rota: Túnel Marcello Alencar - Sentido Aterro", 60, 50, linha),
+        _rota("2", "Rota: Túnel Pref. Marcello Alencar - Sentido Rodoviária", 70, 60, linha),
+        _rota("3", "Rota: Aterro (SDU - S. Porto) - Via Túnel Rio 450", 60, 50, linha),  # corredor
+        _rota("4", "Rota: Túnel Pref. Marcello Alencar (Aterro - S. Centro) - Via Pres Vargas", 90, 50, linha),
+    ]}
+    cfg = replace(cfg, feed_rotas=carregar_config().feed_rotas)  # o do config/tuneis.yaml
+    rotas = [rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)]
+
+    assert sorted(r.sentido for r in rotas) == ["Aterro", "Rodoviária"]  # os corredores ficaram de fora
+    assert {r.tunel_nome for r in rotas} == {"Túnel Marcello Alencar"}
+    assert len({r.tunel_id for r in rotas}) == 1  # um cartão só, com as duas mãos
+    assert sorted(r.id for r in rotas) == ["waze_1", "waze_2"]  # ids distintos para as duas séries

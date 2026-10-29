@@ -55,6 +55,12 @@ detecta sozinho qual é:
   - **Quais ficam de fora:** `feed_rotas.excluir` recebe uma regex por túnel (Túnel Velho, Túnel Novo,
     Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice). Elas valem sobre o `name` do feed, então
     o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a linha para ele voltar.
+  - **Juntar as mãos de um túnel:** `feed_rotas.agrupar` força uma rota para um túnel e um sentido do
+    painel, útil quando o nome no feed foge do padrão. O `tunel` define o cartão (rotas com o mesmo
+    `tunel` ficam juntas, com uma coluna por sentido) e o `sentido` é o rótulo exibido. Exemplo em uso:
+    as duas mãos do Marcello Alencar, `Aterro` e `Rodoviária`, caem no mesmo cartão. A rota entra por
+    essa lista mesmo sem casar com o `filtro_nome`. Para conferir o resultado, rode
+    `python -m tuneis waze-rotas`, que lista cada rota do feed com o túnel e o sentido que ela assume.
   - **Sentidos:** o nome segue o padrão `Rota: <túnel> - Sentido <destino>`. Os sentidos do mesmo
     túnel (ex.: `Rota: Túnel Rebouças - Sentido Lagoa` e `... - Sentido Rio Comprido`) viram um só
     trecho no painel. Sem sentido no nome, o túnel aparece como mão única.
