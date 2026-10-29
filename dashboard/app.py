@@ -364,7 +364,7 @@ def _mmss(segundos) -> str:
     if pd.isna(segundos):
         return "—"
     m, s = divmod(int(round(abs(segundos))), 60)
-    return f"{m}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
 
 
 def _pct(x) -> str:
