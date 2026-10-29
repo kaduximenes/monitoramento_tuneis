@@ -89,16 +89,37 @@ def cmd_waze_rotas(cfg, args):
         print("Sem correspondência:", ", ".join(faltando))
 
     # Como cada rota do feed vai aparecer no painel (túnel = cartão; sentido = coluna do cartão)
+    rotas = feed.get("routes") or []
+    no_painel = rotas_do_feed(feed, cfg)
     print("\nEntram no painel:")
     por_tunel: dict[str, list[str]] = {}
-    for rw in rotas_do_feed(feed, cfg):
+    for rw in no_painel:
         rota = rota_do_feed(rw, cfg)
         por_tunel.setdefault(rota.tunel_nome, []).append(f"{rota.sentido} (id {rw['id']})")
     for tunel in sorted(por_tunel):
         print(f"  {tunel}: {' · '.join(por_tunel[tunel])}")
-    fora = [rw for rw in feed.get("routes") or [] if not cfg.feed_rotas.aceita(" ".join((rw.get("name") or "").split()))]
-    print(f"\n{len(feed.get('routes') or []) - len(fora)} de {len(feed.get('routes') or [])} rotas do feed "
-          f"entram no painel ({len(fora)} fora do filtro ou na lista `excluir`).")
+
+    # Por que as outras ficaram de fora: ajuda a achar rota renomeada no Partner Hub
+    ids_no_painel = {id(rw) for rw in no_painel}
+    fora = [rw for rw in rotas if id(rw) not in ids_no_painel]
+    if fora:
+        print("\nFicam de fora:")
+        for rw in fora:
+            nome_feed = " ".join((rw.get("name") or "").split())
+            if any(p.search(nome_feed) for p in cfg.feed_rotas.excluir):
+                motivo = "na lista `excluir`"
+            elif not cfg.feed_rotas.aceita(nome_feed):
+                motivo = "não casa `filtro_nome`"
+            else:
+                motivo = "sem geometria (`line` com menos de 2 pontos)"
+            print(f"  {rw.get('name')}  ({motivo})")
+    print(f"\n{len(no_painel)} de {len(rotas)} rotas do feed entram no painel.")
+
+    # Regra de agrupamento que não encontrou nenhuma rota: o nome no feed mudou
+    for grupo in cfg.feed_rotas.agrupar:
+        if not any(grupo.nome.search(" ".join((rw.get("name") or "").split())) for rw in rotas):
+            print(f"\nATENÇÃO: nenhuma rota do feed casa `agrupar` /{grupo.nome.pattern}/ "
+                  f"(esperado: {grupo.tunel} · {grupo.sentido}). Confira o nome no Partner Hub.")
 
 
 def cmd_status(cfg, args):
