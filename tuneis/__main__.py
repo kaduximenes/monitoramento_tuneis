@@ -83,10 +83,11 @@ def cmd_waze_rotas(cfg, args):
     print(f"Feed: {feed.get('areaName', '?')} — {len(feed.get('routes') or [])} rotas")
     for r in feed.get("routes") or []:
         print(f"  id={r.get('id')!s:<12} {r.get('length', 0):>6} m  tempo={r.get('time')}s  hist={r.get('historicTime')}s  {r.get('name')}")
-    faltando = [r.id for r in cfg.rotas if r.id not in vinculadas]
-    print(f"\n{len(vinculadas)}/{len(cfg.rotas)} rotas configuradas encontradas no feed.")
-    if faltando:
-        print("Sem correspondência:", ", ".join(faltando))
+    if cfg.rotas:  # rotas do YAML vinculadas ao feed de trânsito (incluir_tuneis_yaml: true)
+        faltando = [r.id for r in cfg.rotas if r.id not in vinculadas]
+        print(f"\n{len(vinculadas)}/{len(cfg.rotas)} rotas da lista `tuneis` encontradas no feed.")
+        if faltando:
+            print("Sem correspondência:", ", ".join(faltando))
 
     # Como cada rota do feed vai aparecer no painel (túnel = cartão; sentido = coluna do cartão)
     rotas = feed.get("routes") or []
