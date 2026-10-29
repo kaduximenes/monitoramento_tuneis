@@ -56,7 +56,7 @@ detecta sozinho qual é:
     Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice). Elas valem sobre o `name` do feed, então
     o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a linha para ele voltar.
   - **Sentidos:** o nome segue o padrão `Rota: <túnel> - Sentido <destino>`. Os sentidos do mesmo
-    túnel (ex.: `Rota: Túnel Velho - Sentido Botafogo` e `... - Sentido Copacabana`) viram um só
+    túnel (ex.: `Rota: Túnel Rebouças - Sentido Lagoa` e `... - Sentido Rio Comprido`) viram um só
     trecho no painel. Sem sentido no nome, o túnel aparece como mão única.
   - **Referência:** até haver histórico próprio, vale o `historicTime` do Waze. O fluxo livre (usado
     na Análise) é estimado com `feed_rotas.velocidade_livre_kmh`.

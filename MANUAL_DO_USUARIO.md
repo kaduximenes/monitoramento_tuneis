@@ -139,6 +139,7 @@ O alerta abre após 2 leituras consecutivas em Atenção ou Crítico (aproximada
 ## Observações importantes
 
 - A lista de rotas é controlada pelo filtro de nomes e pelo cadastro no Waze. O sistema usa `time`, `length` e `line` da rota inteira e não recorta automaticamente o trecho entre as bocas do túnel.
+- Alguns túneis ficam deliberadamente fora do painel, mesmo publicados no Waze: Túnel Velho, Túnel Novo, Noel Rosa, Nina Rabha, Major Vaz, João Ricardo e Rua Alice. A retirada é feita por nome na configuração, sem alterar o cadastro no Partner Hub; um túnel ausente da tela não significa falha de coleta.
 - No formato alternativo de feed de trânsito, o tempo é calculado como fluxo livre mais atrasos de congestionamentos identificados no túnel ou na fila de acesso, até 3 km e no mesmo sentido. Portanto, nesse formato as vias de acesso podem contribuir explicitamente para o atraso.
 - **jamLevel**, status estatístico, alertas do Waze e interdição são informações relacionadas, mas não equivalentes.
 - Um período sem leituras ou com poucos dias de histórico reduz o que é possível concluir. Confira o horário da última leitura e a quantidade de dias indicados na visão Análise.
