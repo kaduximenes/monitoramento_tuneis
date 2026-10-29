@@ -169,6 +169,7 @@ ESTILO = f"""
 .legenda i {{ display:inline-block; vertical-align:middle; margin-right:6px; }}
 .legenda .l-real {{ width:22px; height:3px; background:var(--real); }}
 .legenda .l-tip {{ width:22px; border-top:2px dashed var(--tipico); }}
+.legenda .l-nm {{ width:22px; height:3px; background:{COR[NORMAL]}; }}
 .legenda .l-at {{ width:22px; height:3px; background:{COR[ATENCAO]}; }}
 .legenda .l-cr {{ width:22px; height:3px; background:{COR[CRITICO]}; }}
 
@@ -433,7 +434,7 @@ def _segmentos(s: pd.DataFrame, lacuna_s: int = 600):
 
 def _cor_nivel(nivel) -> str:
     """A linha do gráfico assume a cor do status do momento: o dia vira uma faixa de leitura."""
-    return COR.get(nivel, COR_REAL) if nivel in (ATENCAO, CRITICO) else COR_REAL
+    return COR.get(nivel) or COR_REAL
 
 
 def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) -> str:
@@ -460,7 +461,7 @@ def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) ->
         for a, b in zip(cortes, cortes[1:]):
             i0 = max(a - 1, 0)
             xr, rr, tr, cor = xs[i0:b], real[i0:b], tip[i0:b], cores[a]
-            if cor != COR_REAL:  # área de excesso só onde há problema: o olho vai direto nela
+            if niveis[a] in (ATENCAO, CRITICO):  # área de excesso só onde há problema: o olho vai direto nela
                 poligono = pts(xr, Y(np.maximum(rr, tr))) + " " + pts(xr[::-1], Y(tr)[::-1])
                 partes.append(f'<polygon points="{poligono}" fill="{cor}" opacity=".20"/>')
             partes.append(f'<polyline points="{pts(xr, Y(rr))}" fill="none" stroke="{cor}" stroke-width="2.4" '
@@ -980,9 +981,10 @@ def quadro() -> None:
                                       avisos.get(tunel_id), compacto))
 
         legenda = (
-            '<div class="legenda fixa"><span><i class="l-real"></i>tempo agora (Waze)</span>'
+            '<div class="legenda fixa"><span>tempo agora (Waze) na cor do status:</span>'
+            '<span><i class="l-nm"></i>normal</span><span><i class="l-at"></i>atenção</span>'
+            '<span><i class="l-cr"></i>crítico</span>'
             '<span><i class="l-tip"></i>tempo típico do horário</span>'
-            '<span><i class="l-at"></i>atenção</span><span><i class="l-cr"></i>crítico</span>'
             f'<span>{_icone_alerta({"type": "ACCIDENT"}, 13)} acidente / interdição no Waze</span>'
             f'<span>{_icone_alerta({"type": "HAZARD"}, 13)} outro alerta do Waze (passe o mouse para detalhes)</span>'
             '<span>linha sob o sentido = sentido mostrado no gráfico · clique no outro sentido para trocar</span></div>'
