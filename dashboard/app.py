@@ -172,7 +172,7 @@ ESTILO = f"""
 .legenda .l-exc {{ width:14px; height:10px; background:{COR_EXCESSO}; opacity:.35; }}
 
 .quadro {{ display:flex; flex-direction:column; gap:6px; }}
-.tunel {{ display:grid; grid-template-columns:7px minmax(170px,230px) 160px 160px 1fr; background:var(--painel);
+.tunel {{ display:grid; grid-template-columns:7px minmax(170px,230px) 172px 172px 1fr; background:var(--painel);
          min-height:104px; }}
 .faixa {{ background:var(--cor); }}
 .nome {{ padding:16px 18px 14px; }}
@@ -208,7 +208,8 @@ ESTILO = f"""
 .gs.on {{ display:flex; }}
 .sentido .dest {{ font-size:.74rem; letter-spacing:.1em; color:var(--mudo); text-transform:uppercase; line-height:1.25;
                  min-height:1.7em; }}
-.sentido .tempo {{ font-size:2.3rem; font-weight:900; line-height:1.05; letter-spacing:-.03em; }}
+.sentido .tempo {{ font-size:2.15rem; font-weight:900; line-height:1.05; letter-spacing:-.03em; white-space:nowrap; }}
+.sentido .tempo small {{ font-size:.42em; font-weight:800; letter-spacing:0; margin-left:.07em; }}
 .sentido .delta {{ font-size:.8rem; font-weight:700; display:flex; align-items:center; gap:5px; }}
 .sentido .delta i {{ width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
                     border-bottom:7px solid var(--cor); display:inline-block; }}
@@ -233,7 +234,7 @@ ESTILO = f"""
 .ocorr {{ margin-top:34px; }}
 .ocorr h2 {{ font-weight:900; font-size:1rem; letter-spacing:.16em; text-transform:uppercase; border-bottom:3px solid var(--texto);
             padding-bottom:8px; margin:0 0 4px; }}
-.ev {{ display:grid; grid-template-columns:62px 7px minmax(200px,1.4fr) 110px 1fr 130px; gap:14px; align-items:center;
+.ev {{ display:grid; grid-template-columns:62px 7px minmax(200px,1.4fr) 110px 1fr 158px; gap:14px; align-items:center;
       padding:9px 0; border-bottom:1px solid var(--linha); font-size:.86rem; }}
 .ev .h {{ font-weight:900; font-size:1.05rem; }}
 .ev .c {{ align-self:stretch; background:var(--cor); }}
@@ -249,7 +250,7 @@ ESTILO = f"""
             gap:16px; flex-wrap:wrap; }}
 .secao h2 small {{ font-weight:500; font-size:.68rem; letter-spacing:.1em; color:var(--mudo); }}
 .secao .nota {{ font-size:.72rem; color:var(--mudo); margin-top:8px; line-height:1.5; }}
-.rk {{ display:grid; grid-template-columns:minmax(190px,1.3fr) minmax(150px,2fr) repeat(5,82px); gap:14px; align-items:center;
+.rk {{ display:grid; grid-template-columns:minmax(190px,1.3fr) minmax(150px,2fr) repeat(5,minmax(86px,1fr)); gap:14px; align-items:center;
       padding:8px 0; border-bottom:1px solid var(--linha); font-size:.86rem; }}
 .rk.cab {{ font-size:.7rem; letter-spacing:.12em; color:var(--mudo); text-transform:uppercase; padding:10px 0 6px; }}
 .rk .t b {{ text-transform:uppercase; letter-spacing:-.01em; }}
@@ -257,7 +258,7 @@ ESTILO = f"""
 .rk .num {{ text-align:right; }}
 .rk .barra {{ display:flex; align-items:center; gap:10px; }}
 .rk .barra i {{ height:8px; background:var(--real); border-radius:0 4px 4px 0; display:block; }}
-.rk .barra b {{ min-width:44px; }}
+.rk .barra b {{ min-width:96px; }}
 .calor {{ overflow-x:auto; padding-top:10px; }}
 .calor .grade {{ display:grid; grid-template-columns:minmax(170px,220px) repeat(24,minmax(22px,1fr)); gap:2px; min-width:760px; }}
 .calor .rot {{ font-size:.76rem; padding-right:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; align-self:center; }}
@@ -360,11 +361,35 @@ SCRIPT_SENTIDO = """
 
 # --- formatação -----------------------------------------------------------------
 
-def _mmss(segundos) -> str:
+def _dur(segundos) -> str:
+    """Duração por extenso, sem ambiguidade: '37 seg', '2 min e 20 seg', '30 min', '1 h 5 min'."""
     if pd.isna(segundos):
         return "—"
-    m, s = divmod(int(round(abs(segundos))), 60)
-    return f"{m:02d}:{s:02d}"
+    h, resto = divmod(int(round(abs(segundos))), 3600)
+    m, s = divmod(resto, 60)
+    if h:
+        return f"{h} h {m} min" if m else f"{h} h"
+    if m:
+        return f"{m} min e {s} seg" if s else f"{m} min"
+    return f"{s} seg"
+
+
+def _tempo_html(segundos) -> str:
+    """Mesmo formato de `_dur`, com a unidade em corpo menor para o número seguir em destaque."""
+    if pd.isna(segundos):
+        return "—"
+    h, resto = divmod(int(round(abs(segundos))), 3600)
+    m, s = divmod(resto, 60)
+    if h:
+        return f"{h}<small>h</small>" + (f" {m}<small>min</small>" if m else "")
+    if m:
+        return f"{m}<small>min</small>" + (f" {s:02d}<small>seg</small>" if s else "")
+    return f"{s}<small>seg</small>"
+
+
+def _min_rotulo(minutos: float) -> str:
+    """Rótulo curto de escala, em minutos (aceita frações, ex. 0,5 min)."""
+    return f"{minutos:g} min".replace(".", ",")
 
 
 def _pct(x) -> str:
@@ -454,7 +479,7 @@ def _svg(s: pd.DataFrame, desde: int, agora: int, y_min: float, y_max: float) ->
             faixas.append("<span></span>")
             continue
         r = s.iloc[j]
-        dica = f"{_hhmm(r.ts)} · real {_mmss(r.tempo_s)} · típico {_mmss(r.referencia_s)}"
+        dica = f"{_hhmm(r.ts)} · real {_dur(r.tempo_s)} · típico {_dur(r.referencia_s)}"
         faixas.append(f'<span title="{_esc(dica)}"></span>')
     return (f'<div class="plot"><img alt="" src="data:image/svg+xml;base64,{imagem}"/>'
             f'<div class="hov">{"".join(faixas)}</div></div>')
@@ -514,11 +539,11 @@ def _html_sentido(r, ativo: bool, clicavel: bool) -> str:
     if pd.isna(r.tempo_s):
         return f'<div class="{cls}">{dest}<div class="tempo">—</div><div class="ref">sem leituras</div></div>'
     rotulo_ref = "livre" if r.fonte_ref == REF_FLUXO_LIVRE else "típico"
-    ref = f'<div class="ref">{rotulo_ref} {_mmss(r.referencia_s)}</div>'
+    ref = f'<div class="ref">{rotulo_ref} {_dur(r.referencia_s)}</div>'
     if r.status == INTERDITADO:
         return f'<div class="{cls}">{dest}<div class="tempo fechado">Interditado</div>{ref}</div>'
     if r.status == SEM_DADOS:
-        return (f'<div class="{cls}">{dest}<div class="tempo">{_mmss(r.tempo_s)}</div>'
+        return (f'<div class="{cls}">{dest}<div class="tempo">{_tempo_html(r.tempo_s)}</div>'
                 f'<div class="ref">última leitura {_hhmm(r.ts)}</div></div>')
     dif = r.tempo_s - r.referencia_s
     sentido_delta = "neutro" if abs(dif) < 15 else ("alto" if dif > 0 else "baixo")
@@ -530,8 +555,8 @@ def _html_sentido(r, ativo: bool, clicavel: bool) -> str:
     else:
         cor_delta, destaque = "var(--mudo)", ""
     sinal = "+" if dif >= 0 else "−"
-    return (f'<div class="{cls}" style="--cor:{cor_delta}">{dest}<div class="tempo">{_mmss(r.tempo_s)}</div>'
-            f'<div class="delta {sentido_delta}{destaque}"><i></i>{sinal}{_mmss(dif)} · {_pct(var)}</div>{ref}</div>')
+    return (f'<div class="{cls}" style="--cor:{cor_delta}">{dest}<div class="tempo">{_tempo_html(r.tempo_s)}</div>'
+            f'<div class="delta {sentido_delta}{destaque}"><i></i>{sinal}{_dur(dif)} · {_pct(var)}</div>{ref}</div>')
 
 
 def _avisos_por_tunel(conn, agora: int) -> dict[str, list[tuple[str, dict]]]:
@@ -590,7 +615,7 @@ def _grafico(r, series: dict, desde: int, agora: int) -> str:
     titulo = "gráfico" if r.sentido == SENTIDO_UNICO else f"gráfico: → {_esc(_destino(r.sentido))}"
     return (
         f'<div class="esc"><span>{titulo}</span>'
-        f'<span>escala {_mmss(y_min * 60)} a {_mmss(y_max * 60)}</span></div>'
+        f'<span>escala {_min_rotulo(y_min)} a {_min_rotulo(y_max)}</span></div>'
         + _svg(s, inicio, agora, y_min, y_max)
         + f'<div class="eixo"><span>{_hhmm(inicio)}</span><span>{meio:%H:%M}</span><span>agora</span></div>'
     )
@@ -633,12 +658,12 @@ def _html_ocorrencias(conn, agora: int) -> str:
                 continue
             aberto = pd.isna(a.fim_ts)
             minutos = int(((agora if aberto else a.fim_ts) - a.inicio_ts) // 60)
-            duracao = f"em aberto · {minutos} min" if aberto else f"encerrado · {minutos} min"
+            duracao = f"{'em aberto' if aberto else 'encerrado'} · {_dur(minutos * 60)}"
             linhas.append(
                 f'<div class="ev" style="--cor:{COR[a.nivel_max]}"><div class="h">{_hhmm(a.inicio_ts)}</div><div class="c"></div>'
                 f'<div class="t"><b>{_esc(_nome_curto(rota.tunel_nome)[0])}</b> <span>{_esc(_rotulo_sentido(rota.sentido))}</span></div>'
                 f'<div class="s">{NOME_STATUS[a.nivel_max]}</div>'
-                f'<div class="m">pico {_mmss(a.tempo_max_s)} · típico {_mmss(a.referencia_s)} · {a.razao_max:.1f}×</div>'
+                f'<div class="m">pico {_dur(a.tempo_max_s)} · típico {_dur(a.referencia_s)} · {a.razao_max:.1f}×</div>'
                 f'<div class="d{" aberto" if aberto else ""}">{duracao}</div></div>'
             )
         corpo = "".join(linhas)
@@ -702,8 +727,8 @@ def _html_rotas_feed(conn) -> str:
         sinal = "" if dif is None else ("+" if dif >= 0 else "−")
         resumo = (
             f'<summary><div class="t"><b>{_esc((rw.get("name") or "").strip())}</b> <span>id {_esc(rw.get("id"))}</span></div>'
-            f'<div class="num">{_mmss(tempo)}</div><div class="num">{_mmss(hist)}</div>'
-            f'<div class="num">{sinal}{_mmss(dif)}</div><div class="num">{_html_jam(rw.get("jamLevel"))}</div>'
+            f'<div class="num">{_dur(tempo)}</div><div class="num">{_dur(hist)}</div>'
+            f'<div class="num">{sinal}{_dur(dif)}</div><div class="num">{_html_jam(rw.get("jamLevel"))}</div>'
             f'<div class="num">{_km(rw.get("length"))}</div><div class="num">{_kmh(rw.get("length"), tempo)}</div></summary>'
         )
         atributos = [("id", rw.get("id")), ("type", rw.get("type")), ("fromName", rw.get("fromName") or "—"),
@@ -718,8 +743,8 @@ def _html_rotas_feed(conn) -> str:
         for i, sr in enumerate(rw.get("subRoutes") or []):
             linhas.append(
                 f'<div class="tr"><span class="mudo">{i + 1}</span><span>{_de_para(sr.get("fromName"), sr.get("toName"))}</span>'
-                f'<span class="num">{_km(sr.get("length"))}</span><span class="num">{_mmss(sr.get("time"))}</span>'
-                f'<span class="num">{_mmss(sr.get("historicTime"))}</span><span class="num">{_html_jam(sr.get("jamLevel"))}</span>'
+                f'<span class="num">{_km(sr.get("length"))}</span><span class="num">{_dur(sr.get("time"))}</span>'
+                f'<span class="num">{_dur(sr.get("historicTime"))}</span><span class="num">{_html_jam(sr.get("jamLevel"))}</span>'
                 f'<span class="num">{_kmh(sr.get("length"), sr.get("time"))}</span></div>'
             )
         blocos.append(f'<details class="rw">{resumo}<div class="attrs">{attrs}</div>'
@@ -727,8 +752,8 @@ def _html_rotas_feed(conn) -> str:
     ultima = max(rw.get("_visto_ts") or 0 for rw in rotas.values())
     return (f'<div class="pcrj secao"><h2>Rotas do Waze · Traffic View<small>leitura das {_hhmm(ultima)} · '
             f'clique numa rota para ver os trechos</small></h2>{cab}{"".join(blocos)}'
-            '<div class="nota">Tempos em min:s. time = tempo atual; historicTime = tempo típico do Waze para o horário; '
-            "jamLevel = lentidão (0 livre a 4 parado); vel. média = length / time.</div></div>")
+            '<div class="nota">Tempos em minutos e segundos (min / seg). time = tempo atual; historicTime = tempo típico '
+            "do Waze para o horário; jamLevel = lentidão (0 livre a 4 parado); vel. média = length / time.</div></div>")
 
 
 # --- análise ----------------------------------------------------------------------
@@ -752,11 +777,11 @@ def _html_ranking(resumo: pd.DataFrame) -> str:
             continue
         largura = r.atraso_medio_s / escala * 100
         barra = f'<i style="width:{largura:.1f}%"></i>' if largura >= 0.5 else ""
-        interd = f"{r.min_interditado:.0f} min" if r.min_interditado else '<span class="zero">—</span>'
+        interd = _dur(r.min_interditado * 60) if r.min_interditado else '<span class="zero">—</span>'
         linhas.append(
-            f'<div class="rk">{nome}<div class="barra"><b>{_mmss(r.atraso_medio_s)}</b>{barra}</div>'
-            f'<div class="num">{_mmss(r.mediana_s)}</div><div class="num">{_mmss(r.p90_s)}</div>'
-            f'<div class="num">{_mmss(r.max_s)}</div><div class="num">{r.frac_lento:.0%}</div>'
+            f'<div class="rk">{nome}<div class="barra"><b>{_dur(r.atraso_medio_s)}</b>{barra}</div>'
+            f'<div class="num">{_dur(r.mediana_s)}</div><div class="num">{_dur(r.p90_s)}</div>'
+            f'<div class="num">{_dur(r.max_s)}</div><div class="num">{r.frac_lento:.0%}</div>'
             f'<div class="num">{interd}</div></div>'
         )
     return "".join(linhas)
@@ -776,7 +801,7 @@ def _html_calor(tabela: pd.DataFrame) -> str:
             if pd.isna(valor):
                 celulas.append(f'<div class="c" title="{_esc(rotulo)} · {hora}h · sem leituras"></div>')
             else:
-                dica = f"{rotulo} · {hora}h–{hora + 1}h · atraso médio {_mmss(valor)}"
+                dica = f"{rotulo} · {hora}h–{hora + 1}h · atraso médio {_dur(valor)}"
                 celulas.append(f'<div class="c" style="background:{_cor_atraso(valor)}" title="{_esc(dica)}"></div>')
     celulas.append("<div></div>")
     celulas += [f'<div class="hh">{h if h % 3 == 0 else ""}</div>' for h in range(24)]
@@ -829,8 +854,8 @@ def _html_perfil(perfil: pd.DataFrame, livre_s: float) -> str:
             continue
         r = por_slot.loc[slot]
         h, m = divmod(slot * 15, 60)
-        dica = (f"{h:02d}:{m:02d} · mediana {_mmss(r.mediana_s)} · P10–P90 {_mmss(r.p10_s)}–{_mmss(r.p90_s)}"
-                f" · livre {_mmss(livre_s)} · {int(r.dias)} dia(s)")
+        dica = (f"{h:02d}:{m:02d} · mediana {_dur(r.mediana_s)} · P10–P90 {_dur(r.p10_s)}–{_dur(r.p90_s)}"
+                f" · livre {_dur(livre_s)} · {int(r.dias)} dia(s)")
         faixas.append(f'<span title="{_esc(dica)}"></span>')
     rotulos_y = "".join(f'<span class="yl" style="top:{(1 - m / y_max) * 100:.2f}%">{m:g} min</span>' for m in marcas)
     eixo_x = "".join(f"<span>{h}h</span>" for h in range(0, 25, 3))
@@ -857,7 +882,7 @@ def _mapa(status: pd.DataFrame, geometrias: dict) -> None:
         if not coords:
             continue
         info = (f"<b>{_esc(r.tunel)}</b><br/>{_esc(_rotulo_sentido(r.sentido))}<br/>"
-                f"{NOME_STATUS[r.status]} · {_mmss(r.tempo_s)} (típico {_mmss(r.referencia_s)})")
+                f"{NOME_STATUS[r.status]} · {_dur(r.tempo_s)} (típico {_dur(r.referencia_s)})")
         cor = [int(COR[r.status][i:i + 2], 16) for i in (1, 3, 5)]
         linhas.append({"path": [[lon, lat] for lat, lon in coords], "cor": cor, "info": info})
         lat, lon = coords[len(coords) // 2]
