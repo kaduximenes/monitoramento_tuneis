@@ -1021,9 +1021,11 @@ def painel_analise() -> None:
     )
     conn = storage.conectar(cfg.db_path)
     try:
-        st.html(_html_rotas_feed(conn))
+        rotas_feed = _html_rotas_feed(conn)
     finally:
         conn.close()
+    if rotas_feed:  # sem rotas do Traffic View ainda: não há seção para mostrar
+        st.html(rotas_feed)
     st.html(_html_cadastro())
     st.html('<div class="pcrj rodape">Leituras do Waze for Cities a cada 2 min. Rotas do Traffic View: tempo de travessia '
             f"do próprio Waze; fluxo livre estimado a {cfg.feed_rotas.velocidade_livre_kmh:g} km/h. Túneis do feed de "
