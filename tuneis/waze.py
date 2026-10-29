@@ -41,6 +41,7 @@ _PREFIXO_ROTA = re.compile(r"^Rota\s*[:\-]\s*", re.I)  # "Rota: Túnel Velho" ->
 _SENTIDO = re.compile(r"^Sentido\s+", re.I)          # "Sentido Copacabana" -> "Copacabana"
 SENTIDO_UNICO = "sentido único"  # rota sem sentido no nome (túnel de mão única)
 TUNEL_LONGO_M = 4000  # o maior túnel monitorado tem ~3,4 km: rota mais longa mede um corredor
+_SENTIDOS_AVISADOS: set[tuple[str, str]] = set()  # evita repetir o mesmo aviso a cada leitura
 
 
 def _distancia_m(lat0: float, lon0: float, lat1: float, lon1: float) -> float:
@@ -251,10 +252,37 @@ def alertas_da_rota(rw: dict) -> list[dict]:
     return out
 
 
+def _avisar_sentidos_repetidos(rotas: Sequence[Rota]) -> None:
+    """Duas rotas do feed no mesmo túnel com o mesmo rótulo: o cartão mostraria duas colunas iguais.
+
+    Acontece quando nenhuma das mãos traz o destino no nome (viram "sentido único"). O conserto é
+    declarar o `sentido` de cada mão em `feed_rotas.agrupar`. Avisa uma vez por par de nomes, para
+    não repetir o aviso a cada leitura em vez de encher o log a cada 2 minutos.
+    """
+    vistos: dict[tuple[str, str], Rota] = {}
+    for r in rotas:
+        if r.waze_feed_id is None:  # rotas do YAML têm o sentido escrito à mão
+            continue
+        chave = (r.tunel_id, r.sentido)
+        if chave not in vistos:
+            vistos[chave] = r
+            continue
+        aviso = (r.tunel_nome, r.sentido)
+        if aviso in _SENTIDOS_AVISADOS:
+            continue
+        _SENTIDOS_AVISADOS.add(aviso)
+        log.warning(
+            "Duas rotas do feed no mesmo túnel e sentido (%s / %s): ids %s e %s. "
+            "Declare o `sentido` de cada uma em feed_rotas.agrupar.",
+            r.tunel_nome, r.sentido, vistos[chave].waze_feed_id, r.waze_feed_id,
+        )
+
+
 def carregar_rotas_feed(conn: sqlite3.Connection, cfg: Config) -> list[Rota]:
     """Sincroniza a configuração com as rotas do feed já vistas (as que ainda passam no filtro)."""
     rotas = [rota_do_feed(rw, cfg) for rw in storage.carregar_rotas_feed(conn).values()
              if cfg.feed_rotas.aceita(_nome(rw))]
+    _avisar_sentidos_repetidos(rotas)
     _, removidas = cfg.sincronizar_feed(rotas)
     for r in removidas:  # rota que saiu do feed (ou entrou na lista de exclusão) deixa o painel
         log.info("Rota fora do feed: %s (id %s)", r.nome, r.waze_feed_id)
@@ -283,6 +311,7 @@ class FonteWaze:
             return parse_feed_trafego(feed, [r for r in do_yaml if r.waze_rua is not None])
         descobertas = rotas_do_feed(feed, self.cfg)
         rotas = [rota_do_feed(rw, self.cfg) for rw in descobertas]
+        _avisar_sentidos_repetidos(rotas)
         for nova in self.cfg.incluir(rotas):
             log.info("Rota nova no feed: %s (id %s) -> %s", nova.nome, nova.waze_feed_id, nova.id)
         vinculadas = [r for r in do_yaml if r.waze_route_id is not None or r.waze_nome is not None]

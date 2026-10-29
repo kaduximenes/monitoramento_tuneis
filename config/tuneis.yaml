@@ -26,8 +26,9 @@ coleta:
 feed_rotas:
   # Só os túneis em si: "Rota: Túnel X" ou "Rota: Túnel X - Sentido Y". Ficam de fora os corredores
   # que citam um túnel, como "Rota: Túnel Santa Bárbara (Laranjeiras - S. Centro) - ... - Via Pres Vargas".
-  # Mais a Ponte Rio-Niterói ("BR-101 N/S Ponte Rio-Niterói - <destino>", feed de WAZE_TVT_FEED_URL_EXTRA).
-  filtro_nome: '^Rota:\s*T[uú]nel\b(?!.*\()(?!.*\s-\s+Via\b)|Ponte Rio-Niter[oó]i'
+  # Mais a Ponte Rio-Niterói ("BR-101 N/S Ponte Rio-Niterói - <destino>", feed de WAZE_TVT_FEED_URL_EXTRA),
+  # aceita com ou sem acento/hífen: "Ponte Rio Niteroi" também entra.
+  filtro_nome: '(?:^Rota:\s*T[uú]nel\b(?!.*\()|Ponte Rio[-\s–]?Niter[oó]i)(?!.*\s-\s+Via\b)'
   velocidade_livre_kmh: 60     # o feed não traz o fluxo livre: extensão / esta velocidade
   incluir_tuneis_yaml: false   # true = monitora também a lista `tuneis` (feed de trânsito)
   # Túneis fora do painel (regex no `name` do feed), mesmo passando no `filtro_nome` acima.
@@ -54,6 +55,10 @@ feed_rotas:
     - nome: 'Alencar.*(Rodovi[aá]ri[ao]|Novo Rio)|(Rodovi[aá]ri[ao]|Novo Rio).*Alencar'
       tunel: Túnel Marcello Alencar
       sentido: Rodoviária
+    # Ponte Rio-Niterói: o cartão não depende do prefixo que o Waze usar ("BR-101 N", "BR-101 S"
+    # ou nenhum). O sentido continua vindo do nome (o destino após " - ").
+    - nome: 'Ponte Rio[-\s–]?Niter[oó]i'
+      tunel: BR-101 Ponte Rio-Niterói
 
 # Parâmetros de detecção (globais; podem ser sobrescritos por túnel ou por rota)
 deteccao:

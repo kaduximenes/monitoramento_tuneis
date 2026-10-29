@@ -56,6 +56,12 @@ detecta sozinho qual é:
     Noel Rosa, Nina Rabha, Major Vaz, João Ricardo, Rua Alice, Túnel Rio 450). Elas valem sobre o
     `name` do feed, então o túnel sai do painel mesmo continuando publicado no Waze — basta apagar a
     linha para ele voltar.
+  - **Ponte Rio-Niterói:** entra pelo mesmo `filtro_nome` (feed de `WAZE_TVT_FEED_URL_EXTRA`) e fica
+    como um cartão só, com um sentido por mão. O prefixo que o Waze usar não importa (`BR-101 N`,
+    `BR-101 S` ou nenhum) e o nome é aceito com ou sem acento/hífen (`Ponte Rio Niteroi`), porque o
+    cartão é fixado em `feed_rotas.agrupar`. O rótulo do sentido vem do destino no nome
+    (`... - Niteroi`). Se as duas mãos chegarem **sem** destino, ambas viram “sentido único” e o log
+    avisa para declarar o `sentido` de cada uma em `agrupar`.
   - **Rota editada no Partner Hub:** se um túnel é renomeado ou tem a rota recriada nos dois sentidos,
     o id antigo deixa de existir no feed e o sistema troca a rota sozinho: a nova entra como um sentido
     do mesmo cartão e a antiga sai do painel (não fica como coluna sem leituras). A remoção só acontece

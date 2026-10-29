@@ -62,10 +62,11 @@ def test_rotas_do_feed_viram_trechos(cfg, conn):
 
 
 def test_filtro_de_nome_deixa_so_tuneis(cfg, conn):
-    todas = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile(".")))
+    todas = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("."), agrupar=()))
     ciclo(conn, todas, _Fonte(todas, url="x"), {})
 
-    so_tuneis = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("T[uú]nel", re.I)))
+    so_tuneis = replace(cfg, rotas=(), feed_rotas=replace(cfg.feed_rotas, filtro_nome=re.compile("T[uú]nel", re.I),
+                                                          agrupar=()))
     assert [a.rota_id for a in ciclo(conn, so_tuneis, _Fonte(so_tuneis, url="x"), {}, agora_ts=TS)] == []  # já lidas
     assert [r.id for r in so_tuneis.rotas] == ["waze_99"]
     # rotas guardadas no banco que não passam mais no filtro ficam de fora ao carregar
@@ -226,3 +227,45 @@ def test_feed_fora_do_ar_nao_apaga_rotas(cfg, conn):
         _Falha(cfg, url="x").coletar()
     assert sorted(r.id for r in cfg.rotas) == antes
     assert set(storage.carregar_rotas_feed(conn)) == salvas
+
+
+def test_ponte_rio_niteroi_nos_dois_sentidos(cfg):
+    """Ponte atualizada nos dois sentidos: um cartão só, com o destino de cada mão."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import rota_do_feed, rotas_do_feed
+
+    linha = [(-22.889, -43.215), (-22.875, -43.119)]
+    # variações reais do nome que o Waze publica para a Ponte
+    nomes = [
+        "BR-101 N Ponte Rio-Niterói - Niteroi",
+        "BR-101 S Ponte Rio-Niterói - Rio de Janeiro",
+        "BR-101 Ponte Rio Niteroi - Niterói",          # sem hífen e sem acento
+        "Ponte Rio-Niterói - Rio de Janeiro",          # sem o prefixo BR-101
+        "BR-101 Ponte Rio-Niterói (Niterói - Rio) - Via Av Brasil",  # corredor
+    ]
+    feed = {"routes": [_rota(str(i), n, 900, 880, linha) for i, n in enumerate(nomes)]}
+    cfg = replace(cfg, rotas=(), feed_rotas=carregar_config().feed_rotas)
+    rotas = [rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)]
+
+    assert [r.tunel_nome for r in rotas] == ["BR-101 Ponte Rio-Niterói"] * 4  # um cartão só
+    assert len({r.tunel_id for r in rotas}) == 1
+    assert sorted(r.sentido for r in rotas) == ["Niteroi", "Niterói", "Rio de Janeiro", "Rio de Janeiro"]
+
+
+def test_ponte_sem_destino_avisa_sentido_repetido(cfg, caplog):
+    """Duas mãos sem o destino no nome viram "sentido único": o log avisa o que corrigir."""
+    from tuneis.config import carregar_config
+    from tuneis.waze import _avisar_sentidos_repetidos, rota_do_feed, rotas_do_feed
+
+    linha = [(-22.889, -43.215), (-22.875, -43.119)]
+    feed = {"routes": [
+        _rota("1", "BR-101 N Ponte Rio-Niterói", 900, 880, linha),
+        _rota("2", "BR-101 S Ponte Rio-Niterói", 880, 900, linha),
+    ]}
+    cfg = replace(cfg, rotas=(), feed_rotas=carregar_config().feed_rotas)
+    rotas = [rota_do_feed(rw, cfg) for rw in rotas_do_feed(feed, cfg)]
+    assert {r.sentido for r in rotas} == {"sentido único"}  # as duas sem destino
+
+    with caplog.at_level("WARNING", logger="tuneis.waze"):
+        _avisar_sentidos_repetidos(rotas)
+    assert "feed_rotas.agrupar" in caplog.text
