@@ -1,17 +1,32 @@
-# Render (plano gratuito): coletor e painel no mesmo serviço, porque o plano grátis não tem worker nem disco.
-# O banco fica no disco temporário do serviço e é apagado a cada deploy ou reinício; até juntar 3 dias de
-# histórico, o típico vem do historicTime do Waze. Um ping externo a cada 10 min evita que o serviço durma.
+# Render: coletor e painel no mesmo serviço (o plano não separa worker do site).
+# O banco e os JSONs brutos do feed ficam num Persistent Disk, em /var/data: sobrevivem a deploy,
+# reinício e crash. Disco exige plano pago e instância única (deploy tem alguns segundos de parada).
+# No plano free o disco não existe e o histórico recomeça a cada deploy; até juntar 3 dias de
+# histórico, o típico vem do historicTime do Waze.
 services:
   - type: web
     name: monitoramento-tuneis
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: bash render-start.sh
     healthCheckPath: /_stcore/health
+    # Um disco por serviço; o caminho é o mesmo usado pelas variáveis TUNEIS_* abaixo.
+    # Dimensionar com folga: os JSONs do feed ocupam ~180 MB/dia e `coleta.dias_feeds` está em 7
+    # (~1,3 GB), mais o banco. Reduzir o tamanho depois não é possível; aumentar exige recriar.
+    disk:
+      name: dados-tuneis
+      mountPath: /var/data
+      sizeGB: 5
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.5
+      # os dados precisam apontar para dentro do disco, senão o Render usa o diretório do
+      # repositório (/opt/render/project/src/data), que é descartado a cada deploy
+      - key: TUNEIS_DB
+        value: /var/data/tuneis.db
+      - key: TUNEIS_FEEDS
+        value: /var/data/feeds
       - key: WAZE_TVT_FEED_URL
         sync: false
       - key: WAZE_TVT_FEED_URL_EXTRA

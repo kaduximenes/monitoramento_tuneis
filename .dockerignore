@@ -1,0 +1,21 @@
+# O que não entra na imagem: ambiente local, dados e histórico de git
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.git/
+.gitignore
+.gitattributes
+
+# dados nunca vão na imagem: vêm do volume `dados`
+data/
+
+# segredos (o compose injeta as variáveis no container)
+.env
+
+# arquivos do editor e do sistema
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db

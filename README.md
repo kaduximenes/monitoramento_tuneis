@@ -30,6 +30,44 @@ Para ver um alerta acontecer:
 .venv\Scripts\python -m tuneis simular-incidente --rota reboucas_lagoa --fator 3 --minutos 40
 ```
 
+## Docker (histórico preservado em volume)
+
+Coletor e painel no mesmo container, como no Render, com `/app/data` num volume nomeado:
+o banco SQLite e os JSONs brutos do feed sobrevivem a `down`/`up` e a novos builds.
+
+```bash
+cp .env.example .env          # preencha WAZE_TVT_FEED_URL (e o EXTRA, se usar a Ponte)
+docker compose up -d --build  # painel em http://localhost:8501
+docker compose logs -f tuneis # coleta, rotas descobertas e alertas
+docker compose down           # para tudo; o volume `dados` fica
+```
+
+- **Volume:** `dados` monta em `/app/data`. `docker compose down -v` apaga e zera o histórico;
+  `docker volume inspect monitoramento-tuneis_dados` mostra onde ele está no host.
+- **Configuração sem rebuild:** `./config` é montado read-only em `/app/config`, então editar
+  `tuneis.yaml` (túneis, `filtro_nome`, `excluir`, `agrupar`) vale no próximo reinício do serviço.
+- **Sem a URL do feed:** o compose sobe só o painel, em vez de reiniciar o coletor a cada 30 s.
+- **Código alterado:** `docker compose up -d --build` (o `pip install` fica em cache).
+
+## Deploy no Render (disco persistente)
+
+O `render.yaml` sobe coletor e painel no mesmo serviço, com os dados em `/var/data`, num
+Persistent Disk:
+
+- **Persistência:** `disk.mountPath: /var/data` guarda o banco e os JSONs do feed; sobrevivem a
+deploy, reinício e crash. Sem disco, o histórico recomeça a cada deploy e tudo volta a
+**Calibrando**.
+- **Plano:** disco não existe no plano free — o serviço usa `plan: starter`. Disco é cobrado à
+parte, por GB/mês.
+- **Variáveis:** `TUNEIS_DB` e `TUNEIS_FEEDS` apontam para dentro do disco. Sem elas o app grava em
+`/opt/render/project/src/data`, que é descartado no deploy.
+- **Tamanho:** `sizeGB: 5` cobre `coleta.dias_feeds: 7` (~180 MB/dia) com folga. Reduzir depois
+não é possível; mudar o tamanho exige recriar o disco.
+- **Instância única:** com disco, o deploy tem alguns segundos de parada e não há autoscaling.
+- **Rotas novas:** continuam sendo descobertas no primeiro ciclo de coleta; `python -m tuneis
+waze-rotas` no Shell do serviço mostra o que entrou no painel.
+
+
 ## Fonte real: Waze for Cities
 
 A URL do feed fica no `.env`, na variável `WAZE_TVT_FEED_URL`. Outros feeds lidos junto vão em
@@ -184,6 +222,8 @@ tuneis/coleta.py       laço do coletor e backfill
 tuneis/storage.py      SQLite (WAL)
 dashboard/app.py       painel Streamlit
 tests/                 pytest
+Dockerfile             imagem (coletor + painel), dados em /app/data
+docker-compose.yml     volume `dados` + config montado, para uso local
 ```
 
 > As coordenadas em `config/tuneis.yaml` são aproximadas e servem só ao simulador. Com o Waze

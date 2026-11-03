@@ -1,0 +1,51 @@
+# Desenvolvimento local com o histórico preservado entre execuções.
+#
+#   docker compose up -d --build      # sobe coletor + painel em http://localhost:8501
+#   docker compose logs -f tuneis     # acompanha coleta e alertas
+#   docker compose down               # para tudo (o volume `dados` fica)
+#
+# O volume `dados` guarda /app/data: banco SQLite (leituras, avaliações, baselines) e os JSONs
+# brutos do feed. `docker compose down -v` apaga o volume e zera o histórico.
+name: monitoramento-tuneis
+
+services:
+  tuneis:
+    build: .
+    image: monitoramento-tuneis:local
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      PORT: 8501
+      TZ: America/Sao_Paulo
+      # Lidas do .env da pasta do projeto (ou do ambiente); vazio = coletor avisa e para
+      WAZE_TVT_FEED_URL: ${WAZE_TVT_FEED_URL:-}
+      WAZE_TVT_FEED_URL_EXTRA: ${WAZE_TVT_FEED_URL_EXTRA:-}
+      ALERTA_WEBHOOK_URL: ${ALERTA_WEBHOOK_URL:-}
+    volumes:
+      # o volume: banco e feeds sobrevivem a down/up e a rebuild
+      - dados:/app/data
+      # o YAML entra montado: editar túneis, filtros ou `agrupar` não exige rebuild da imagem
+      - ./config:/app/config:ro
+    # Com a URL do feed definida, sobe coletor + painel (igual ao Render). Sem ela, sobe só o
+    # painel, para não ficar reiniciando o coletor a cada 30 s por falta de configuração.
+    # `$$` escapa o cifrão: quem expande a variável é o shell do container, não o compose.
+    command:
+      - bash
+      - -c
+      - |
+        if [ -n "$$WAZE_TVT_FEED_URL" ]; then
+          exec bash render-start.sh
+        fi
+        echo "WAZE_TVT_FEED_URL vazio: subindo só o painel (sem coleta)"
+        exec python -m streamlit run dashboard/app.py --server.port "$${PORT:-8501}" \
+          --server.address 0.0.0.0 --server.headless true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  dados:
